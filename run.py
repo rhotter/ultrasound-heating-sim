@@ -13,7 +13,7 @@ from src.config import SimulationConfig
 def main():
     parser = argparse.ArgumentParser(description="Run acoustic and/or heat simulations")
     parser.add_argument(
-        "--use_cpu",
+        "--use-cpu",
         action="store_true",
         help="Use CPU for computations (default: False). Use --use_cpu to enable.",
     )
@@ -32,6 +32,12 @@ def main():
         "--steady-state",
         action="store_true",
         help="Use steady state solver for heat simulation instead of time stepping",
+    )
+    parser.add_argument(
+        "--transmit-focus",
+        type=float,
+        default=None,
+        help="Transmit focus distance in meters. If not specified, plane wave transmission is used.",
     )
     args = parser.parse_args()
 
@@ -52,7 +58,7 @@ def main():
     else:
         # Run acoustic simulation
         intensity_data = run_acoustic_simulation(
-            config, args.output_dir, use_gpu=not args.use_cpu
+            config, args.output_dir, use_gpu=not args.use_cpu, transmit_focus=args.transmit_focus
         )
 
     # Run heat simulation
