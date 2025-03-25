@@ -15,13 +15,18 @@ from src.config import SimulationConfig
 
 
 class PressureSimulator:
-    def __init__(self, config: SimulationConfig):
+    def __init__(self, config: SimulationConfig, transmit_focus: Optional[float] = None):
         self.config = config
         self.kgrid: Optional[kWaveGrid] = None
         self.medium: Optional[kWaveMedium] = None
         self.source: Optional[kSource] = None
         self.sensor: Optional[kSensor] = None
         self.sensor_data: Optional[dict] = None
+
+        if transmit_focus is None:
+            self.transmit_focus = np.inf
+        else:
+            self.transmit_focus = transmit_focus
 
     def setup_grid(self) -> kWaveGrid:
         """Create and configure the k-Wave grid."""
@@ -72,11 +77,33 @@ class PressureSimulator:
         if self.kgrid is None:
             raise RuntimeError("Grid must be set up before source/sensor")
 
-        # Create time varying source
+        # Calculate element positions along y-axis (elevational direction)
+        if self.config.acoustic.num_elements_y % 2 != 0:
+            y_ids = np.arange(1, self.config.acoustic.num_elements_y + 1) - np.ceil(self.config.acoustic.num_elements_y / 2)
+        else:
+            y_ids = np.arange(1, self.config.acoustic.num_elements_y + 1) - (self.config.acoustic.num_elements_y + 1) / 2
+
+        # Calculate time delays for elevational focusing
+        if not np.isinf(self.transmit_focus):
+            # Only calculate delays based on y-distance from center
+            y_distances = y_ids * self.config.acoustic.pitch
+            c0 = 1500
+            cmax = max(tissue.sound_speed for tissue in self.config.tissue_layers)
+            cavg = (c0 + cmax) / 2
+            time_delays_y = -(np.sqrt(y_distances**2 + self.transmit_focus**2) - self.transmit_focus) / cavg
+            time_delays_y = time_delays_y - np.min(time_delays_y)
+            
+            # Repeat the same delay pattern for each column (x-direction)
+            time_delays = np.tile(time_delays_y[:, np.newaxis], (1, self.config.acoustic.num_elements_x)).flatten()
+        else:
+            time_delays = np.zeros(self.config.acoustic.num_elements_x * self.config.acoustic.num_elements_y)
+
+        # Create time-delayed source signals
         source_signal = tone_burst(
             1 / self.kgrid.dt,
             self.config.acoustic.freq,
             self.config.acoustic.num_cycles,
+            signal_offset=np.round(time_delays / self.kgrid.dt).astype(int)
         )
         source_signal = self.config.acoustic.source_magnitude * source_signal
 
@@ -97,7 +124,7 @@ class PressureSimulator:
             self.config.acoustic.source_z_pos,
         ] = 1
 
-        # Create source
+        # Create source with signals
         self.source = kSource()
         self.source.p_mask = source_mask
         self.source.p = source_signal

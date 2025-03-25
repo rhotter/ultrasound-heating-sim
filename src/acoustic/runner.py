@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from typing import Optional
 import matplotlib.pyplot as plt
 from src.acoustic.simulator import PressureSimulator
 from src.acoustic.visualization import (
@@ -11,13 +12,13 @@ from src.config import SimulationConfig
 
 
 def run_acoustic_simulation(
-    config: SimulationConfig, output_dir: str, use_gpu: bool = True
+    config: SimulationConfig, output_dir: str, use_gpu: bool = True, transmit_focus: Optional[float] = None
 ) -> np.ndarray:
     """Run the acoustic simulation to generate intensity data."""
     print("\n=== Starting Acoustic Simulation ===")
 
-    # Initialize simulator
-    simulator = PressureSimulator(config)
+# Initialize simulator
+    simulator = PressureSimulator(config, transmit_focus=transmit_focus)
 
     # Set up the grid
     print("Setting up grid...")
