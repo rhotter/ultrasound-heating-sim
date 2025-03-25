@@ -33,10 +33,19 @@ def main():
         action="store_true",
         help="Use steady state solver for heat simulation instead of time stepping",
     )
+    parser.add_argument(
+        "--save-properties",
+        action="store_true",
+        help="Save tissue property distributions to npy files",
+    )
     args = parser.parse_args()
 
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
+    
+    # Create medium directory if saving properties
+    if args.save_properties:
+        os.makedirs(os.path.join(args.output_dir, "medium"), exist_ok=True)
 
     # Initialize configuration
     config = SimulationConfig()
@@ -57,7 +66,11 @@ def main():
 
     # Run heat simulation
     run_heat_simulation(
-        config, intensity_data, args.output_dir, steady_state=args.steady_state
+        config, 
+        intensity_data, 
+        args.output_dir, 
+        steady_state=args.steady_state,
+        save_properties=args.save_properties
     )
 
 

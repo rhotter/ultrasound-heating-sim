@@ -17,6 +17,7 @@ def run_heat_simulation(
     intensity_data: np.ndarray,
     output_dir: str,
     steady_state: bool = False,
+    save_properties: bool = False,
 ):
     """Run the bioheat simulation using provided intensity data.
 
@@ -25,6 +26,7 @@ def run_heat_simulation(
         intensity_data: The acoustic intensity field
         output_dir: Directory to save output
         steady_state: If True, use the steady state solver
+        save_properties: If True, save tissue property distributions
     """
     print("\n=== Starting Heat Simulation ===")
 
@@ -55,6 +57,11 @@ def run_heat_simulation(
     # Setup tissue properties
     print("Setting up tissue properties...")
     simulator.setup_tissue_properties()
+
+    # Save property distributions if requested
+    if save_properties:
+        print("Saving tissue property distributions...")
+        simulator.save_property_distributions(output_dir)
 
     # Setup heat source using acoustic intensity
     print("Setting up heat source from acoustic intensity...")
