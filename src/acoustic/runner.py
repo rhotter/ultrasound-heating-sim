@@ -82,7 +82,7 @@ def run_acoustic_simulation(
     make_pressure_video(
         pressure_data[:, config.grid.Ny // 2, :],
         config.acoustic.dt,
-        downsample=10,
+        downsample=1,
         filename=os.path.join(output_dir, "A3_pressure_video.mp4"),
     )
 
