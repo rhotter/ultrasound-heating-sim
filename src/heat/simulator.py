@@ -4,6 +4,7 @@ import torch.jit
 import time
 from typing import Optional
 import h5py
+import os
 
 from src.config import SimulationConfig
 
@@ -268,6 +269,35 @@ class BioheatSimulator:
         )  # [W/(m³·K)]
 
         return
+
+    def save_property_distributions(self, output_dir: str) -> None:
+        """
+        Save all tissue property distributions to npy files.
+
+        Args:
+            output_dir: Directory to save the property files
+        """
+        # Create medium directory if it doesn't exist
+        medium_dir = os.path.join(output_dir, "medium")
+        os.makedirs(medium_dir, exist_ok=True)
+
+        # Save each property distribution
+        properties = {
+            "density": self.rho,
+            "specific_heat": self.c,
+            "thermal_conductivity": self.k,
+            "blood_perfusion_rate": self.w_b,
+            "absorption_coefficient": self.absorption,
+            "layer_map": self.layer_map,
+            "A": self.A,
+            "Kt": self.Kt,
+            "B": self.B
+        }
+
+        for name, tensor in properties.items():
+            filepath = os.path.join(medium_dir, f"{name}.npy")
+            np.save(filepath, tensor.cpu().numpy())
+            print(f"Saved {name} distribution to {filepath}")
 
     def setup_heat_source(self, intensity_field: Optional[torch.Tensor] = None):
         """
