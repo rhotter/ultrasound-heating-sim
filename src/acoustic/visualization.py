@@ -161,7 +161,6 @@ def plot_intensity_field(
         1e-4 * 1e3 * intensity_data[:, slice_y, :].T,  # to mW/cm^2
         cmap="hot",
         aspect="auto",
-        norm="log",  # Use log scale for better visualization
     )
     plt.colorbar(im, label="Intensity [mW/cm²]")
     ax.set_title(title)
@@ -193,7 +192,7 @@ def make_pressure_video(
     def update(frame):
         im.set_array(pressure_data[downsample * frame].T)
         ax.set_title(
-            f"Pressure Field in Tissue Layers - {downsample * frame * dt * 1e6} μs"
+            f"Pressure Field in Tissue Layers - {downsample * frame * dt * 1e6:.2f} μs"
         )
         return [im]
 
