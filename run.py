@@ -38,11 +38,17 @@ def main():
         action="store_true",
         help="Save tissue property distributions to npy files",
     )
+    parser.add_argument(
+        "--transmit-focus",
+        type=float,
+        default=None,
+        help="Transmit focus distance in meters. If not specified, plane wave transmission is used.",
+    )
     args = parser.parse_args()
 
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
-    
+
     # Create medium directory if saving properties
     if args.save_properties:
         os.makedirs(os.path.join(args.output_dir, "medium"), exist_ok=True)
@@ -61,16 +67,19 @@ def main():
     else:
         # Run acoustic simulation
         intensity_data = run_acoustic_simulation(
-            config, args.output_dir, use_gpu=not args.use_cpu
+            config,
+            args.output_dir,
+            use_gpu=not args.use_cpu,
+            transmit_focus=args.transmit_focus,
         )
 
     # Run heat simulation
     run_heat_simulation(
-        config, 
-        intensity_data, 
-        args.output_dir, 
+        config,
+        intensity_data,
+        args.output_dir,
         steady_state=args.steady_state,
-        save_properties=args.save_properties
+        save_properties=args.save_properties,
     )
 
 
