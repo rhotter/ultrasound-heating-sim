@@ -13,9 +13,9 @@ from src.config import SimulationConfig
 def main():
     parser = argparse.ArgumentParser(description="Run acoustic and/or heat simulations")
     parser.add_argument(
-        "--use_cpu",
+        "--use-cpu",
         action="store_true",
-        help="Use CPU for computations (default: False). Use --use_cpu to enable.",
+        help="Use CPU for computations (default: False). Use --use-cpu to enable.",
     )
     parser.add_argument(
         "--intensity-file",
