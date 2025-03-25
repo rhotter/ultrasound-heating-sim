@@ -47,7 +47,7 @@ class PressureSimulator:
         self.medium = kWaveMedium(
             sound_speed=np.zeros(self.kgrid.k.shape),
             density=np.zeros(self.kgrid.k.shape),
-            alpha_coeff=self.config.acoustic.alpha_coeff,
+            alpha_coeff=np.zeros(self.kgrid.k.shape),
             alpha_power=self.config.acoustic.alpha_power,
         )
 
@@ -59,6 +59,11 @@ class PressureSimulator:
             mask = layer_map == i
             self.medium.sound_speed[mask] = tissue.sound_speed
             self.medium.density[mask] = tissue.density
+
+            # convert from Np/m to dB/cm
+            absorption_dB_per_cm = tissue.absorption_coefficient * 8.686 / 100
+            freq_MHz = self.config.acoustic.freq / 1e6
+            self.medium.alpha_coeff[mask] = absorption_dB_per_cm / freq_MHz
 
         return self.medium
 
