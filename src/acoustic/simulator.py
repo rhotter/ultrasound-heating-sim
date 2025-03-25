@@ -15,7 +15,9 @@ from src.config import SimulationConfig
 
 
 class PressureSimulator:
-    def __init__(self, config: SimulationConfig, transmit_focus: Optional[float] = None):
+    def __init__(
+        self, config: SimulationConfig, transmit_focus: Optional[float] = None
+    ):
         self.config = config
         self.kgrid: Optional[kWaveGrid] = None
         self.medium: Optional[kWaveMedium] = None
@@ -79,9 +81,14 @@ class PressureSimulator:
 
         # Calculate element positions along y-axis (elevational direction)
         if self.config.acoustic.num_elements_y % 2 != 0:
-            y_ids = np.arange(1, self.config.acoustic.num_elements_y + 1) - np.ceil(self.config.acoustic.num_elements_y / 2)
+            y_ids = np.arange(1, self.config.acoustic.num_elements_y + 1) - np.ceil(
+                self.config.acoustic.num_elements_y / 2
+            )
         else:
-            y_ids = np.arange(1, self.config.acoustic.num_elements_y + 1) - (self.config.acoustic.num_elements_y + 1) / 2
+            y_ids = (
+                np.arange(1, self.config.acoustic.num_elements_y + 1)
+                - (self.config.acoustic.num_elements_y + 1) / 2
+            )
 
         # Calculate time delays for elevational focusing
         if not np.isinf(self.transmit_focus):
@@ -90,20 +97,31 @@ class PressureSimulator:
             c0 = 1500
             cmax = max(tissue.sound_speed for tissue in self.config.tissue_layers)
             cavg = (c0 + cmax) / 2
-            time_delays_y = -(np.sqrt(y_distances**2 + self.transmit_focus**2) - self.transmit_focus) / cavg
+            time_delays_y = (
+                -(
+                    np.sqrt(y_distances**2 + self.transmit_focus**2)
+                    - self.transmit_focus
+                )
+                / cavg
+            )
             time_delays_y = time_delays_y - np.min(time_delays_y)
-            
+
             # Repeat the same delay pattern for each column (x-direction)
-            time_delays = np.tile(time_delays_y[:, np.newaxis], (1, self.config.acoustic.num_elements_x)).flatten()
+            time_delays = np.tile(
+                time_delays_y[:, np.newaxis], (1, self.config.acoustic.num_elements_x)
+            ).flatten()
         else:
-            time_delays = np.zeros(self.config.acoustic.num_elements_x * self.config.acoustic.num_elements_y)
+            time_delays = np.zeros(
+                self.config.acoustic.num_elements_x
+                * self.config.acoustic.num_elements_y
+            )
 
         # Create time-delayed source signals
         source_signal = tone_burst(
             1 / self.kgrid.dt,
             self.config.acoustic.freq,
             self.config.acoustic.num_cycles,
-            signal_offset=np.round(time_delays / self.kgrid.dt).astype(int)
+            signal_offset=np.round(time_delays / self.kgrid.dt).astype(int),
         )
         source_signal = self.config.acoustic.source_magnitude * source_signal
 
@@ -180,17 +198,13 @@ class PressureSimulator:
         # reset up the medium since it changes for weird reasons
         self.setup_medium()
 
-        avg_pressure_squared = np.sum(pressure_data**2, axis=0)
-
         # Get local acoustic impedance (ρc)
-        impedance = self.medium.density * self.medium.sound_speed
+        Z = self.medium.density * self.medium.sound_speed
 
-        # Compute instantaneous intensity I = p²/(ρc)
-        average_intensity_over_simulation = avg_pressure_squared / impedance
+        # Compute pulse intensity I = p²/(ρc)
+        pulse_energy = np.sum(pressure_data**2, axis=0) * self.config.acoustic.dt / Z
 
         # Compute time-averaged intensity
-        duty_cycle = 1 / self.config.acoustic.pulse_repetition_freq
-
-        average_intensity = average_intensity_over_simulation * duty_cycle
+        average_intensity = pulse_energy * self.config.acoustic.pulse_repetition_freq
 
         return average_intensity
