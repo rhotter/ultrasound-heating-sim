@@ -100,8 +100,8 @@ class AcousticConfig:
     t_end: float = 25e-6  # [s]
 
     # Medium properties
-    alpha_coeff: float = 0.75
-    alpha_power: float = 1.5
+    # alpha_coeff: float = 0
+    alpha_power: float = 1.1
 
     # Source and sensor positions
     source_z_pos: int = 10
@@ -150,7 +150,7 @@ class SimulationConfig:
                 specific_heat=3630,  # [J/(kg·K)]
                 thermal_conductivity=0,  # [W/(m·K)] Insulating boundary condition (worst case)
                 thickness=4e-3,  # 4 mm
-                heat_transfer_rate=559,  # [ml/min/kg]
+                heat_transfer_rate=0,  # [ml/min/kg]
             ),
             TissueProperties(
                 name="skin",
