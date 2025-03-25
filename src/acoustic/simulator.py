@@ -148,18 +148,17 @@ class PressureSimulator:
         # reset up the medium since it changes for weird reasons
         self.setup_medium()
 
-        avg_pressure_squared = np.mean(pressure_data**2, axis=0)
+        avg_pressure_squared = np.sum(pressure_data**2, axis=0)
 
         # Get local acoustic impedance (ρc)
         impedance = self.medium.density * self.medium.sound_speed
 
-        # Compute instantaneous intensity I = p²/(2ρc)
-        average_intensity_over_simulation = avg_pressure_squared / (2 * impedance)
+        # Compute instantaneous intensity I = p²/(ρc)
+        average_intensity_over_simulation = avg_pressure_squared / impedance
 
         # Compute time-averaged intensity
-        duty_cycle = (
-            self.config.acoustic.pulse_repetition_freq * self.config.acoustic.t_end
-        )
+        duty_cycle = 1 / self.config.acoustic.pulse_repetition_freq
+
         average_intensity = average_intensity_over_simulation * duty_cycle
 
         return average_intensity
