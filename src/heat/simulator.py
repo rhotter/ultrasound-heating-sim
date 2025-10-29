@@ -41,15 +41,56 @@ def solve_bioheat_step_jit(
     Returns:
         Updated temperature field
     """
-    # Compute averaged Kt values at cell faces
-    Kt_x_plus = (Kt_padded[2:, 1:-1, 1:-1] + Kt_padded[1:-1, 1:-1, 1:-1]) * 0.5
-    Kt_x_minus = (Kt_padded[1:-1, 1:-1, 1:-1] + Kt_padded[0:-2, 1:-1, 1:-1]) * 0.5
+    eps = 1.0e-12
 
-    Kt_y_plus = (Kt_padded[1:-1, 2:, 1:-1] + Kt_padded[1:-1, 1:-1, 1:-1]) * 0.5
-    Kt_y_minus = (Kt_padded[1:-1, 1:-1, 1:-1] + Kt_padded[1:-1, 0:-2, 1:-1]) * 0.5
+    # Compute harmonic-averaged Kt values at cell faces to preserve insulating layers
+    Kt_x_plus_num = 2.0 * Kt_padded[2:, 1:-1, 1:-1] * Kt_padded[1:-1, 1:-1, 1:-1]
+    Kt_x_plus_den = Kt_padded[2:, 1:-1, 1:-1] + Kt_padded[1:-1, 1:-1, 1:-1]
+    Kt_x_plus = torch.where(
+        Kt_x_plus_den > eps,
+        Kt_x_plus_num / Kt_x_plus_den,
+        torch.zeros_like(Kt_x_plus_den),
+    )
 
-    Kt_z_plus = (Kt_padded[1:-1, 1:-1, 2:] + Kt_padded[1:-1, 1:-1, 1:-1]) * 0.5
-    Kt_z_minus = (Kt_padded[1:-1, 1:-1, 1:-1] + Kt_padded[1:-1, 1:-1, 0:-2]) * 0.5
+    Kt_x_minus_num = 2.0 * Kt_padded[1:-1, 1:-1, 1:-1] * Kt_padded[0:-2, 1:-1, 1:-1]
+    Kt_x_minus_den = Kt_padded[1:-1, 1:-1, 1:-1] + Kt_padded[0:-2, 1:-1, 1:-1]
+    Kt_x_minus = torch.where(
+        Kt_x_minus_den > eps,
+        Kt_x_minus_num / Kt_x_minus_den,
+        torch.zeros_like(Kt_x_minus_den),
+    )
+
+    Kt_y_plus_num = 2.0 * Kt_padded[1:-1, 2:, 1:-1] * Kt_padded[1:-1, 1:-1, 1:-1]
+    Kt_y_plus_den = Kt_padded[1:-1, 2:, 1:-1] + Kt_padded[1:-1, 1:-1, 1:-1]
+    Kt_y_plus = torch.where(
+        Kt_y_plus_den > eps,
+        Kt_y_plus_num / Kt_y_plus_den,
+        torch.zeros_like(Kt_y_plus_den),
+    )
+
+    Kt_y_minus_num = 2.0 * Kt_padded[1:-1, 1:-1, 1:-1] * Kt_padded[1:-1, 0:-2, 1:-1]
+    Kt_y_minus_den = Kt_padded[1:-1, 1:-1, 1:-1] + Kt_padded[1:-1, 0:-2, 1:-1]
+    Kt_y_minus = torch.where(
+        Kt_y_minus_den > eps,
+        Kt_y_minus_num / Kt_y_minus_den,
+        torch.zeros_like(Kt_y_minus_den),
+    )
+
+    Kt_z_plus_num = 2.0 * Kt_padded[1:-1, 1:-1, 2:] * Kt_padded[1:-1, 1:-1, 1:-1]
+    Kt_z_plus_den = Kt_padded[1:-1, 1:-1, 2:] + Kt_padded[1:-1, 1:-1, 1:-1]
+    Kt_z_plus = torch.where(
+        Kt_z_plus_den > eps,
+        Kt_z_plus_num / Kt_z_plus_den,
+        torch.zeros_like(Kt_z_plus_den),
+    )
+
+    Kt_z_minus_num = 2.0 * Kt_padded[1:-1, 1:-1, 1:-1] * Kt_padded[1:-1, 1:-1, 0:-2]
+    Kt_z_minus_den = Kt_padded[1:-1, 1:-1, 1:-1] + Kt_padded[1:-1, 1:-1, 0:-2]
+    Kt_z_minus = torch.where(
+        Kt_z_minus_den > eps,
+        Kt_z_minus_num / Kt_z_minus_den,
+        torch.zeros_like(Kt_z_minus_den),
+    )
 
     # Compute temperature gradients
     T_grad_x_plus = (T_padded[2:, 1:-1, 1:-1] - T_padded[1:-1, 1:-1, 1:-1]) * inv_dx
@@ -497,7 +538,27 @@ class BioheatSimulator:
             )
 
         # Get time stepping parameters from config
-        dt = self.config.thermal.dt
+        dt_config = self.config.thermal.dt
+        dt = dt_config
+
+        # Enforce explicit diffusion stability limit based on maximum local diffusivity
+        diffusivity = self.Kt / self.A
+        max_diffusivity = float(torch.max(diffusivity).item())
+        if max_diffusivity > 0.0:
+            inv_dx2 = self.inv_dx * self.inv_dx
+            inv_dy2 = self.inv_dy * self.inv_dy
+            inv_dz2 = self.inv_dz * self.inv_dz
+            stability_denom = 2.0 * max_diffusivity * (inv_dx2 + inv_dy2 + inv_dz2)
+            if stability_denom > 0.0:
+                max_stable_dt = 1.0 / stability_denom
+                if dt_config > max_stable_dt:
+                    adjusted_dt = max_stable_dt * 0.95
+                    print(
+                        "Thermal dt {:.3e}s exceeds explicit stability limit {:.3e}s; reducing to {:.3e}s.".format(
+                            dt_config, max_stable_dt, adjusted_dt
+                        )
+                    )
+                    dt = adjusted_dt
         t_end = self.config.thermal.t_end
         save_every = self.config.thermal.save_every
 
