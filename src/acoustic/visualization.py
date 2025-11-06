@@ -10,8 +10,16 @@ def plot_medium_properties(
     medium_sound_speed: np.ndarray,
     config: SimulationConfig,
     slice_y: int | None = None,
+    transmit_focus: float | None = None,
 ) -> Tuple[plt.Figure, plt.Axes]:
-    """Plot the sound speed distribution in tissue layers."""
+    """Plot the sound speed distribution in tissue layers.
+
+    Args:
+        medium_sound_speed: 3D array of sound speed values
+        config: Simulation configuration
+        slice_y: Y-plane to slice (defaults to middle)
+        transmit_focus: Transmit focus distance in meters (if specified)
+    """
     if slice_y is None:
         slice_y = config.grid.Ny // 2
 
@@ -80,6 +88,17 @@ def plot_medium_properties(
         ha="center",
         fontsize=12,
     )
+
+    # Add transmit focus point if specified
+    if transmit_focus is not None and not np.isinf(transmit_focus):
+        # Convert focus distance from meters to grid points
+        focus_z_grid = config.acoustic.source_z_pos + transmit_focus / config.grid.dz
+        focus_x_grid = config.grid.Nx // 2  # On-axis focus
+
+        # Draw focal point
+        ax.plot(focus_x_grid, focus_z_grid, 'y*', markersize=20, markeredgecolor='white',
+                markeredgewidth=1.5, label=f'Focus ({transmit_focus*1e3:.1f} mm)')
+        ax.legend(loc='upper right')
 
     return fig, ax
 

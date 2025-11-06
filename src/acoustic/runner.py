@@ -29,7 +29,7 @@ def run_acoustic_simulation(
     simulator.setup_medium()
 
     # Plot the medium properties
-    fig, ax = plot_medium_properties(simulator.medium.sound_speed, config)
+    fig, ax = plot_medium_properties(simulator.medium.sound_speed, config, transmit_focus=transmit_focus)
     plt.savefig(os.path.join(output_dir, "A0_medium_properties.png"))
     plt.close()
 

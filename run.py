@@ -44,6 +44,16 @@ def main():
         default=None,
         help="Transmit focus distance in meters. If not specified, plane wave transmission is used.",
     )
+    parser.add_argument(
+        "--azimuthal-focusing",
+        action="store_true",
+        help="Enable 2D focusing in both elevational and azimuthal directions (default: False, elevational only)",
+    )
+    parser.add_argument(
+        "--acoustic-only",
+        action="store_true",
+        help="Run only acoustic simulation without heat simulation (default: False)",
+    )
     args = parser.parse_args()
 
     # Create output directory
@@ -55,6 +65,9 @@ def main():
 
     # Initialize configuration
     config = SimulationConfig()
+
+    # Set azimuthal focusing flag
+    config.acoustic.enable_azimuthal_focusing = args.azimuthal_focusing
 
     # Get intensity data
     if args.intensity_file:
@@ -73,14 +86,18 @@ def main():
             transmit_focus=args.transmit_focus,
         )
 
-    # Run heat simulation
-    run_heat_simulation(
-        config,
-        intensity_data,
-        args.output_dir,
-        steady_state=args.steady_state,
-        save_properties=args.save_properties,
-    )
+    # Run heat simulation (unless acoustic-only mode)
+    if not args.acoustic_only:
+        run_heat_simulation(
+            config,
+            intensity_data,
+            args.output_dir,
+            steady_state=args.steady_state,
+            save_properties=args.save_properties,
+        )
+    else:
+        print("\nSkipping heat simulation (--acoustic-only mode)")
+        print(f"Intensity data saved to {args.output_dir}/average_intensity.npy")
 
 
 if __name__ == "__main__":

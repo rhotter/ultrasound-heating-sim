@@ -79,7 +79,8 @@ class PressureSimulator:
         if self.kgrid is None:
             raise RuntimeError("Grid must be set up before source/sensor")
 
-        # Calculate element positions along y-axis (elevational direction)
+        # Calculate element positions
+        # Y-axis (elevational direction)
         if self.config.acoustic.num_elements_y % 2 != 0:
             y_ids = np.arange(1, self.config.acoustic.num_elements_y + 1) - np.ceil(
                 self.config.acoustic.num_elements_y / 2
@@ -90,26 +91,58 @@ class PressureSimulator:
                 - (self.config.acoustic.num_elements_y + 1) / 2
             )
 
-        # Calculate time delays for elevational focusing
+        # X-axis (azimuthal direction)
+        if self.config.acoustic.num_elements_x % 2 != 0:
+            x_ids = np.arange(1, self.config.acoustic.num_elements_x + 1) - np.ceil(
+                self.config.acoustic.num_elements_x / 2
+            )
+        else:
+            x_ids = (
+                np.arange(1, self.config.acoustic.num_elements_x + 1)
+                - (self.config.acoustic.num_elements_x + 1) / 2
+            )
+
+        # Calculate time delays for focusing
         if not np.isinf(self.transmit_focus):
-            # Only calculate delays based on y-distance from center
-            y_distances = y_ids * self.config.acoustic.pitch
             c0 = 1500
             cmax = max(tissue.sound_speed for tissue in self.config.tissue_layers)
             cavg = (c0 + cmax) / 2
-            time_delays_y = (
-                -(
-                    np.sqrt(y_distances**2 + self.transmit_focus**2)
-                    - self.transmit_focus
-                )
-                / cavg
-            )
-            time_delays_y = time_delays_y - np.min(time_delays_y)
 
-            # Repeat the same delay pattern for each column (x-direction)
-            time_delays = np.tile(
-                time_delays_y[:, np.newaxis], (1, self.config.acoustic.num_elements_x)
-            ).flatten()
+            if self.config.acoustic.enable_azimuthal_focusing:
+                # 2D focusing: calculate delays based on both x and y distances from center
+                # Create 2D meshgrid of element positions in physical coordinates
+                x_positions, y_positions = np.meshgrid(
+                    x_ids * self.config.acoustic.pitch,
+                    y_ids * self.config.acoustic.pitch
+                )
+
+                # Calculate 3D Euclidean distance from each element to focal point at (0, 0, transmit_focus)
+                distances = np.sqrt(
+                    x_positions**2 + y_positions**2 + self.transmit_focus**2
+                )
+
+                # Time delays for spherical wavefront convergence
+                time_delays_2d = -(distances - self.transmit_focus) / cavg
+                time_delays_2d = time_delays_2d - np.min(time_delays_2d)
+
+                # Flatten to 1D array (row-major order: Y varies faster than X)
+                time_delays = time_delays_2d.flatten()
+            else:
+                # 1D focusing: only calculate delays based on y-distance from center (original behavior)
+                y_distances = y_ids * self.config.acoustic.pitch
+                time_delays_y = (
+                    -(
+                        np.sqrt(y_distances**2 + self.transmit_focus**2)
+                        - self.transmit_focus
+                    )
+                    / cavg
+                )
+                time_delays_y = time_delays_y - np.min(time_delays_y)
+
+                # Repeat the same delay pattern for each column (x-direction)
+                time_delays = np.tile(
+                    time_delays_y[:, np.newaxis], (1, self.config.acoustic.num_elements_x)
+                ).flatten()
         else:
             time_delays = np.zeros(
                 self.config.acoustic.num_elements_x

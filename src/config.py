@@ -41,7 +41,7 @@ class GridConfig:
     # Grid parameters
     domain_size_x: int = 256  # Total domain size before PML subtraction
     domain_size_y: int = 128
-    domain_size_z: int = 128
+    domain_size_z: int = 150
 
     # PML parameters
     pml_size: int = 10  # Size of the PML layer
@@ -105,6 +105,9 @@ class AcousticConfig:
 
     # Source and sensor positions
     source_z_pos: int = 10
+
+    # Focusing options
+    enable_azimuthal_focusing: bool = False  # Enable focusing in x-direction (azimuthal) in addition to y-direction (elevational)
 
     # References to other configurations (will be set in SimulationConfig)
     _grid: Optional["GridConfig"] = None
