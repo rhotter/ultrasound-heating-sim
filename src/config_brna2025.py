@@ -79,7 +79,7 @@ class ThermalConfigBrna2025(ThermalConfig):
     - Overall duty cycle: 0.5 × 0.0148 = 0.74%
     """
     # Time parameters
-    dt: float = 0.1  # [s] 100 ms time step for long simulation
+    dt: float = 0.01  # [s] 10 ms time step for long simulation
     t_end: float = 5400.0  # [s] 90 minutes
     save_every: int = 50  # Save every 5 seconds (0.1s × 50)
 
