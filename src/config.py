@@ -137,6 +137,10 @@ class ThermalConfig:
     blood_specific_heat: float = 3617  # [J/(kg·K)]
     arterial_temperature: float = 37.0  # [°C]
 
+    # Transducer heating
+    enable_transducer_heating: bool = False
+    transducer_temperature: float = 50.0  # [°C]
+
 
 @dataclass
 class SimulationConfig:

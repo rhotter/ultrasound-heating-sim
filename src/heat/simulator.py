@@ -131,6 +131,11 @@ class BioheatSimulator:
         self.Kt = None  # k
         self.B = None  # w_b·ρ_b·c_b
 
+        # Transducer heating
+        self.transducer_mask = None
+        self.enable_transducer_heating = config.thermal.enable_transducer_heating
+        self.transducer_temperature = config.thermal.transducer_temperature
+
         # Layer map
         self.layer_map = None
 
@@ -324,6 +329,52 @@ class BioheatSimulator:
             )
         return self.Q
 
+    def setup_transducer_mask(self):
+        """Create a boolean mask identifying transducer surface cells.
+
+        The transducer is positioned at z-index specified by config.acoustic.source_z_pos,
+        centered in the x-y plane, with dimensions determined by the number of elements
+        and pitch.
+        """
+        # Get transducer position from acoustic config
+        transducer_z_idx = self.config.acoustic.source_z_pos
+
+        # Get transducer dimensions
+        num_elem_x = self.config.acoustic.num_elements_x
+        num_elem_y = self.config.acoustic.num_elements_y
+        pitch = self.config.acoustic.pitch
+
+        # Calculate array footprint in meters
+        array_width_x = num_elem_x * pitch
+        array_width_y = num_elem_y * pitch
+
+        # Center in x-y plane (physical coordinates)
+        x_center_m = self.Lx / 2
+        y_center_m = self.Ly / 2
+
+        # Convert to grid indices
+        x_start_idx = int((x_center_m - array_width_x/2) / self.dx)
+        x_end_idx = int((x_center_m + array_width_x/2) / self.dx)
+        y_start_idx = int((y_center_m - array_width_y/2) / self.dy)
+        y_end_idx = int((y_center_m + array_width_y/2) / self.dy)
+
+        # Create mask at transducer z-position
+        self.transducer_mask = torch.zeros(
+            (self.nx, self.ny, self.nz),
+            dtype=torch.bool,
+            device=self.device
+        )
+        self.transducer_mask[x_start_idx:x_end_idx,
+                             y_start_idx:y_end_idx,
+                             transducer_z_idx] = True
+
+        # Print diagnostic information
+        print(f"Transducer heating mask created:")
+        print(f"  Position: z-index = {transducer_z_idx} ({transducer_z_idx*self.dz*1e3:.2f} mm)")
+        print(f"  Footprint: {self.transducer_mask.sum()} cells ({array_width_x*1e3:.1f} × {array_width_y*1e3:.1f} mm)")
+        print(f"  X range: [{x_start_idx}, {x_end_idx})")
+        print(f"  Y range: [{y_start_idx}, {y_end_idx})")
+
     def solve_bioheat_step(self, T, dt):
         """
         Perform one time step of the bioheat equation solver with spatially-varying parameters.
@@ -357,6 +408,10 @@ class BioheatSimulator:
             inv_dz=float(self.inv_dz),
             dt=float(dt),
         )
+
+        # Apply transducer heating boundary condition if enabled
+        if self.enable_transducer_heating:
+            T_new[self.transducer_mask] = self.transducer_temperature
 
         return T_new
 
@@ -559,6 +614,11 @@ class BioheatSimulator:
             print(
                 f"Cycle duration: {cycle_duration:.2f} s, Duty cycle: {100*pulse_duration/cycle_duration:.2f}%\n"
             )
+
+        # Set up transducer heating if enabled
+        if self.enable_transducer_heating:
+            print(f"\nEnabling transducer surface heating at {self.transducer_temperature}°C")
+            self.setup_transducer_mask()
 
         # Time stepping loop
         for step in range(steps):

@@ -71,6 +71,12 @@ def main():
         action="store_true",
         help="Skip generating video files for pressure and temperature evolution (saves time and disk space)",
     )
+    parser.add_argument(
+        "--transducer-temp",
+        type=float,
+        default=None,
+        help="Transducer surface temperature in °C. If specified, applies constant temperature boundary condition at transducer surface.",
+    )
     args = parser.parse_args()
 
     # Create output directory
@@ -125,6 +131,12 @@ def main():
 
     # Run heat simulation (unless acoustic-only mode)
     if not args.acoustic_only:
+        # Enable transducer heating if temperature specified
+        if args.transducer_temp is not None:
+            config.thermal.enable_transducer_heating = True
+            config.thermal.transducer_temperature = args.transducer_temp
+            print(f"\nTransducer heating enabled: {args.transducer_temp}°C")
+
         # Check if pulsing is enabled (for Brna2025 or if manually set)
         pulsing_enabled = getattr(config.thermal, "enable_pulsing", False)
 
