@@ -7,25 +7,39 @@ from src.config import SimulationConfig
 
 
 def plot_temperature_evolution(
-    times: list, max_temperatures: list, title: str = "Temperature Evolution"
+    times: list,
+    max_temperatures: list,
+    title: str = "Temperature Evolution",
+    max_temperatures_skull: list | None = None,
+    max_temperatures_brain: list | None = None,
 ) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plot the evolution of maximum temperature over time.
 
     Args:
         times: List of time points
-        max_temperatures: List of maximum temperatures
+        max_temperatures: List of maximum temperatures (global)
         title: Plot title
+        max_temperatures_skull: Optional list of maximum temperatures in skull region
+        max_temperatures_brain: Optional list of maximum temperatures in brain region
 
     Returns:
         Figure and axes objects
     """
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(times, max_temperatures)
+    ax.plot(times, max_temperatures, label="Global Max", linewidth=2)
+
+    if max_temperatures_skull is not None:
+        ax.plot(times, max_temperatures_skull, label="Skull Max", linewidth=2, linestyle="--")
+
+    if max_temperatures_brain is not None:
+        ax.plot(times, max_temperatures_brain, label="Brain Max", linewidth=2, linestyle="-.")
+
     ax.set_xlabel("Time [s]")
     ax.set_ylabel("Maximum Temperature [°C]")
     ax.set_title(title)
     ax.grid(True)
+    ax.legend()
 
     return fig, ax
 

@@ -8,6 +8,7 @@ from pathlib import Path
 from src.heat.runner import run_heat_simulation
 from src.acoustic.runner import run_acoustic_simulation
 from src.config import SimulationConfig
+from src.config_brna2025 import SimulationConfigBrna2025, get_effective_intensity_brna2025, FOCAL_DEPTH_BRNA2025
 
 
 def main():
@@ -54,6 +55,11 @@ def main():
         action="store_true",
         help="Run only acoustic simulation without heat simulation (default: False)",
     )
+    parser.add_argument(
+        "--config-brna2025",
+        action="store_true",
+        help="Use Brna et al. 2025 configuration (1.8 MHz, 1024 CMUT elements, 1.2mm skull)",
+    )
     args = parser.parse_args()
 
     # Create output directory
@@ -64,10 +70,19 @@ def main():
         os.makedirs(os.path.join(args.output_dir, "medium"), exist_ok=True)
 
     # Initialize configuration
-    config = SimulationConfig()
+    if args.config_brna2025:
+        print("Using Brna et al. 2025 configuration")
+        config = SimulationConfigBrna2025()
+        # Override transmit focus if not specified
+        if args.transmit_focus is None:
+            args.transmit_focus = FOCAL_DEPTH_BRNA2025
+            print(f"Setting focal depth to {args.transmit_focus*1e3:.1f} mm (2mm below skull)")
+    else:
+        config = SimulationConfig()
 
-    # Set azimuthal focusing flag
-    config.acoustic.enable_azimuthal_focusing = args.azimuthal_focusing
+    # Set azimuthal focusing flag (can be overridden by CLI)
+    if args.azimuthal_focusing:
+        config.acoustic.enable_azimuthal_focusing = True
 
     # Get intensity data
     if args.intensity_file:
@@ -88,6 +103,14 @@ def main():
 
     # Run heat simulation (unless acoustic-only mode)
     if not args.acoustic_only:
+        # Apply intensity scaling for Brna2025 pulsing protocol
+        if args.config_brna2025:
+            print("\nApplying Brna et al. 2025 pulsing protocol:")
+            print(f"  Original max intensity: {intensity_data.max():.2e} W/m²")
+            intensity_data = get_effective_intensity_brna2025(intensity_data)
+            print(f"  Time-averaged intensity: {intensity_data.max():.2e} W/m²")
+            print(f"  Duty cycle across trains: 1.48% (150ms PTD / 10.15s)")
+
         run_heat_simulation(
             config,
             intensity_data,

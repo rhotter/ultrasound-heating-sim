@@ -23,15 +23,24 @@ def plot_medium_properties(
     if slice_y is None:
         slice_y = config.grid.Ny // 2
 
+    # Calculate extent in cm
+    x_extent_cm = config.grid.Nx * config.grid.dx * 100  # Convert m to cm
+    z_extent_cm = config.grid.Nz * config.grid.dz * 100  # Convert m to cm
+
     fig, ax = plt.subplots(figsize=(12, 8))
-    im = ax.imshow(medium_sound_speed[:, slice_y, :].T, aspect="auto", cmap="viridis")
+    im = ax.imshow(
+        medium_sound_speed[:, slice_y, :].T,
+        aspect="auto",
+        cmap="viridis",
+        extent=[0, x_extent_cm, z_extent_cm, 0]  # [left, right, bottom, top]
+    )
     plt.colorbar(im, label="Sound Speed [m/s]")
     ax.set_title("Sound Speed Distribution in Tissue Layers\n(XZ plane at Y = Ny/2)")
-    ax.set_xlabel("X position [grid points]")
-    ax.set_ylabel("Z position [grid points]")
+    ax.set_xlabel("X position [cm]")
+    ax.set_ylabel("Z position [cm]")
 
     # Add layer annotations
-    current_z = 0
+    current_z_cm = 0.0
 
     # Add horizontal line at tissue start
     ax.axhline(y=0, color="w", linestyle="--", alpha=0.5)
@@ -39,26 +48,26 @@ def plot_medium_properties(
     # Add layer boundaries and labels for each tissue layer except the last one
     for tissue in config.tissue_layers[:-1]:
         if tissue.thickness is not None:
-            points = int(tissue.thickness / config.grid.dz)
-            if points > 0:
-                next_z = current_z + points
+            thickness_cm = tissue.thickness * 100  # Convert m to cm
+            if thickness_cm > 0:
+                next_z_cm = current_z_cm + thickness_cm
                 # Add boundary line
-                ax.axhline(y=next_z, color="w", linestyle="--", alpha=0.5)
+                ax.axhline(y=next_z_cm, color="w", linestyle="--", alpha=0.5)
                 # Add layer label
                 ax.text(
-                    config.grid.Nx // 2,
-                    current_z + points // 2,
+                    x_extent_cm / 2,
+                    current_z_cm + thickness_cm / 2,
                     tissue.name.capitalize(),
                     color="w",
                     ha="center",
                     fontsize=12,
                 )
-                current_z = next_z
+                current_z_cm = next_z_cm
 
     # Add label for the last (innermost) layer
     ax.text(
-        config.grid.Nx // 2,
-        current_z + 10,
+        x_extent_cm / 2,
+        current_z_cm + 0.25,  # 0.25 cm offset
         config.tissue_layers[-1].name.capitalize(),
         color="w",
         ha="center",
@@ -66,23 +75,22 @@ def plot_medium_properties(
     )
 
     # Add transducer array visualization
-    source_x_size = config.acoustic.num_elements_x * (
-        config.acoustic.pitch / config.grid.dx
-    )
-    x_start = round((config.grid.Nx - source_x_size) / 2)
-    transducer_height = 3
+    source_x_size_cm = config.acoustic.num_elements_x * config.acoustic.pitch * 100  # Convert to cm
+    x_start_cm = (x_extent_cm - source_x_size_cm) / 2
+    source_z_pos_cm = config.acoustic.source_z_pos * config.grid.dz * 100  # Convert to cm
+    transducer_height_cm = 3 * config.grid.dz * 100  # Convert to cm
     rect = Rectangle(
-        (x_start, 10),
-        source_x_size,
-        transducer_height,
+        (x_start_cm, source_z_pos_cm),
+        source_x_size_cm,
+        transducer_height_cm,
         facecolor="red",
         alpha=0.5,
         edgecolor="white",
     )
     ax.add_patch(rect)
     ax.text(
-        config.grid.Nx // 2,
-        8,
+        x_extent_cm / 2,
+        source_z_pos_cm - 0.05,  # 0.5 mm above transducer
         "Transducer Array",
         color="red",
         ha="center",
@@ -91,12 +99,12 @@ def plot_medium_properties(
 
     # Add transmit focus point if specified
     if transmit_focus is not None and not np.isinf(transmit_focus):
-        # Convert focus distance from meters to grid points
-        focus_z_grid = config.acoustic.source_z_pos + transmit_focus / config.grid.dz
-        focus_x_grid = config.grid.Nx // 2  # On-axis focus
+        # Convert focus distance from meters to cm
+        focus_z_cm = source_z_pos_cm + transmit_focus * 100  # Convert m to cm
+        focus_x_cm = x_extent_cm / 2  # On-axis focus
 
         # Draw focal point
-        ax.plot(focus_x_grid, focus_z_grid, 'y*', markersize=20, markeredgecolor='white',
+        ax.plot(focus_x_cm, focus_z_cm, 'y*', markersize=20, markeredgecolor='white',
                 markeredgewidth=1.5, label=f'Focus ({transmit_focus*1e3:.1f} mm)')
         ax.legend(loc='upper right')
 

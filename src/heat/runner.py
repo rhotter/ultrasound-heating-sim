@@ -72,6 +72,25 @@ def run_heat_simulation(
     print("Running bioheat simulation...")
     T_history, times, max_temps = simulator.run_simulation(steady_state=steady_state)
 
+    # Compute region-specific maximum temperatures (skull and brain)
+    layer_map = simulator.get_layer_map()
+    skull_mask = (layer_map == 2)  # Index 2 = skull
+    brain_mask = (layer_map == 3)  # Index 3 = brain
+
+    max_temps_skull = []
+    max_temps_brain = []
+
+    for T_field in T_history:
+        T_tensor = torch.tensor(T_field, device=simulator.device) if not isinstance(T_field, torch.Tensor) else T_field
+
+        # Max temperature in skull region
+        max_temp_skull = float(torch.max(T_tensor[skull_mask]).cpu().numpy())
+        max_temps_skull.append(max_temp_skull)
+
+        # Max temperature in brain region
+        max_temp_brain = float(torch.max(T_tensor[brain_mask]).cpu().numpy())
+        max_temps_brain.append(max_temp_brain)
+
     # Visualize results
     print("Plotting results...")
 
@@ -94,7 +113,12 @@ def run_heat_simulation(
     else:
         # For time-dependent simulation, create all plots
         # Temperature evolution
-        fig, _ = plot_temperature_evolution(times, max_temps)
+        fig, _ = plot_temperature_evolution(
+            times,
+            max_temps,
+            max_temperatures_skull=max_temps_skull,
+            max_temperatures_brain=max_temps_brain,
+        )
         plt.savefig(os.path.join(output_dir, "T1_temperature_evolution.png"))
         plt.close()
 
