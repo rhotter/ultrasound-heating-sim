@@ -12,9 +12,21 @@ from src.config import SimulationConfig
 
 
 def run_acoustic_simulation(
-    config: SimulationConfig, output_dir: str, use_gpu: bool = True, transmit_focus: Optional[float] = None
+    config: SimulationConfig,
+    output_dir: str,
+    use_gpu: bool = True,
+    transmit_focus: Optional[float] = None,
+    skip_videos: bool = False,
 ) -> np.ndarray:
-    """Run the acoustic simulation to generate intensity data."""
+    """Run the acoustic simulation to generate intensity data.
+
+    Args:
+        config: Simulation configuration
+        output_dir: Directory to save outputs
+        use_gpu: Whether to use GPU for simulation
+        transmit_focus: Optional transmit focus distance in meters
+        skip_videos: If True, skip generating video files
+    """
     print("\n=== Starting Acoustic Simulation ===")
 
 # Initialize simulator
@@ -52,6 +64,15 @@ def run_acoustic_simulation(
 
     # Plot max pressure
     max_pressure = np.max(pressure_data, axis=0)
+
+    # Print maximum pressure analysis
+    max_pressure_value = np.max(max_pressure)
+    print(f"\n=== Acoustic Pressure Analysis ===")
+    print(f"Max pressure (peak): {max_pressure_value/1e6:.3f} MPa")
+    print(f"Max pressure (RMS): {max_pressure_value/(np.sqrt(2)*1e6):.3f} MPa")
+    print(f"Source pressure: {config.acoustic.source_magnitude/1e6:.3f} MPa")
+    print(f"Pressure gain: {max_pressure_value/config.acoustic.source_magnitude:.2f}x")
+
     plt.figure()
     plt.imshow(1e-6 * max_pressure[:, config.grid.Ny // 2, :].T, cmap="coolwarm")
     plt.colorbar(label="Max Pressure [MPa]")
@@ -79,12 +100,15 @@ def run_acoustic_simulation(
     np.save(intensity_path, average_intensity)
     print(f"Saved intensity data to {intensity_path}")
 
-    # make pressure video
-    make_pressure_video(
-        pressure_data[:, config.grid.Ny // 2, :],
-        config.acoustic.dt,
-        downsample=1,
-        filename=os.path.join(output_dir, "A3_pressure_video.mp4"),
-    )
+    # make pressure video (unless skipped)
+    if not skip_videos:
+        make_pressure_video(
+            pressure_data[:, config.grid.Ny // 2, :],
+            config.acoustic.dt,
+            downsample=1,
+            filename=os.path.join(output_dir, "A3_pressure_video.mp4"),
+        )
+    else:
+        print("Skipping pressure video generation")
 
     return average_intensity

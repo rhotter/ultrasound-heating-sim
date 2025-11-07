@@ -18,6 +18,7 @@ def run_heat_simulation(
     output_dir: str,
     steady_state: bool = False,
     save_properties: bool = False,
+    skip_videos: bool = False,
 ):
     """Run the bioheat simulation using provided intensity data.
 
@@ -27,6 +28,7 @@ def run_heat_simulation(
         output_dir: Directory to save output
         steady_state: If True, use the steady state solver
         save_properties: If True, save tissue property distributions
+        skip_videos: If True, skip generating video files
     """
     print("\n=== Starting Heat Simulation ===")
 
@@ -68,9 +70,19 @@ def run_heat_simulation(
     intensity_tensor = torch.tensor(intensity_data, device=simulator.device)
     simulator.setup_heat_source(intensity_field=intensity_tensor)
 
+    # Get pulsing parameters from config (if present)
+    pulsed = getattr(config.thermal, "enable_pulsing", False)
+    pulse_duration = getattr(config.thermal, "pulse_duration", 0.150)
+    isi_duration = getattr(config.thermal, "isi_duration", 10.0)
+
     # Run simulation
     print("Running bioheat simulation...")
-    T_history, times, max_temps = simulator.run_simulation(steady_state=steady_state)
+    T_history, times, max_temps = simulator.run_simulation(
+        steady_state=steady_state,
+        pulsed=pulsed,
+        pulse_duration=pulse_duration,
+        isi_duration=isi_duration,
+    )
 
     # Compute region-specific maximum temperatures (skull and brain)
     layer_map = simulator.get_layer_map()
@@ -132,14 +144,17 @@ def run_heat_simulation(
         plt.savefig(os.path.join(output_dir, "T3_acoustic_thermal_combined.png"))
         plt.close()
 
-        # Create temperature evolution video
-        print("Creating temperature evolution video...")
-        make_temperature_video(
-            T_history[::5],
-            config,
-            times[::5],
-            os.path.join(output_dir, "T4_temperature_evolution.mp4"),
-        )
+        # Create temperature evolution video (unless skipped)
+        if not skip_videos:
+            print("Creating temperature evolution video...")
+            make_temperature_video(
+                T_history[::5],
+                config,
+                times[::5],
+                os.path.join(output_dir, "T4_temperature_evolution.mp4"),
+            )
+        else:
+            print("Skipping temperature video generation")
 
         print(f"Temperature history shape: {T_history.shape}")
         print(f"Number of time points: {len(times)}")

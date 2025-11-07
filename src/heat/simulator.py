@@ -478,11 +478,20 @@ class BioheatSimulator:
 
         return T
 
-    def run_simulation(self, steady_state: bool = False):
+    def run_simulation(
+        self,
+        steady_state: bool = False,
+        pulsed: bool = False,
+        pulse_duration: float = 0.150,
+        isi_duration: float = 10.0,
+    ):
         """Run the bioheat simulation.
 
         Args:
             steady_state: If True, use the steady state solver instead of time stepping.
+            pulsed: If True, use pulsed heating protocol (heat ON/OFF cycling).
+            pulse_duration: Duration of heating pulse [s] (default 150 ms).
+            isi_duration: Inter-stimulus interval [s] (default 10 s).
 
         Returns:
             Tuple containing:
@@ -540,9 +549,30 @@ class BioheatSimulator:
             * self.config.thermal.arterial_temperature
         )
 
+        # Set up pulsing protocol if enabled
+        if pulsed:
+            Q_baseline = self.Q.clone()  # Store baseline heat source
+            cycle_duration = pulse_duration + isi_duration
+            print(
+                f"Pulsed heating protocol enabled: {pulse_duration*1000:.0f} ms ON, {isi_duration:.1f} s OFF"
+            )
+            print(
+                f"Cycle duration: {cycle_duration:.2f} s, Duty cycle: {100*pulse_duration/cycle_duration:.2f}%\n"
+            )
+
         # Time stepping loop
         for step in range(steps):
             t += dt
+
+            # Apply pulsing logic if enabled
+            if pulsed:
+                time_in_cycle = t % cycle_duration
+                if time_in_cycle <= pulse_duration:
+                    # ON phase: use full heat source
+                    self.Q = Q_baseline
+                else:
+                    # OFF phase: no heat source
+                    self.Q = torch.zeros_like(Q_baseline)
 
             # Update temperature
             T = self.solve_bioheat_step(T, dt)
