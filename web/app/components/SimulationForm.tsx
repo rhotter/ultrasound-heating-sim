@@ -19,6 +19,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
   const [LxCm, setLxCm] = useState(parseFloat((defaultParams.Lx * 100).toFixed(2)));
   const [LyCm, setLyCm] = useState(parseFloat((defaultParams.Ly * 100).toFixed(2)));
   const [LzCm, setLzCm] = useState(parseFloat((defaultParams.Lz * 100).toFixed(2)));
+  const [focusDepthCm, setFocusDepthCm] = useState(defaultParams.focus_depth ? parseFloat((defaultParams.focus_depth * 100).toFixed(2)) : 0);
 
   const handleChange = (field: keyof SimulationParams, value: any) => {
     setParams(prev => ({ ...prev, [field]: value }));
@@ -34,6 +35,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
       Lx: LxCm / 100,
       Ly: LyCm / 100,
       Lz: LzCm / 100,
+      focus_depth: focusDepthCm === 0 ? 0 : focusDepthCm / 100,
     };
     onSubmit(submissionParams);
   };
@@ -45,6 +47,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
     setLxCm(parseFloat((defaultParams.Lx * 100).toFixed(2)));
     setLyCm(parseFloat((defaultParams.Ly * 100).toFixed(2)));
     setLzCm(parseFloat((defaultParams.Lz * 100).toFixed(2)));
+    setFocusDepthCm(defaultParams.focus_depth ? parseFloat((defaultParams.focus_depth * 100).toFixed(2)) : 0);
   };
 
   return (
@@ -127,12 +130,15 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
             disabled={isRunning}
           />
           <FormField
-            label="Focus Depth (m)"
-            value={params.focus_depth ?? ''}
-            onChange={(v) => handleChange('focus_depth', v === '' ? 0 : v)}
-            step={0.001}
+            label="Focus Depth (cm)"
+            value={focusDepthCm === 0 ? '' : focusDepthCm}
+            onChange={(v) => {
+              const val = typeof v === 'number' ? v : parseFloat(v) || 0;
+              setFocusDepthCm(val);
+            }}
+            step={0.1}
             help="Depth of focal point"
-            placeholder="0.015"
+            placeholder="1.5"
             disabled={isRunning || params.focus_depth === 0}
           />
         </div>
