@@ -66,7 +66,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
     <form onSubmit={handleSubmit} className="space-y-10">
       {/* Acoustic Parameters */}
       <div className="space-y-5">
-        <h2 className="text-base font-semibold text-neutral-900">
+        <h2 className="text-base font-semibold text-neutral-900 pb-2 border-b border-neutral-200">
           Acoustic Parameters
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -149,7 +149,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
 
       {/* Tissue Parameters */}
       <div className="space-y-5">
-        <h2 className="text-base font-semibold text-neutral-900">
+        <h2 className="text-base font-semibold text-neutral-900 pb-2 border-b border-neutral-200">
           Tissue Parameters
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -179,7 +179,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
 
       {/* Thermal Parameters */}
       <div className="space-y-5">
-        <h2 className="text-base font-semibold text-neutral-900">
+        <h2 className="text-base font-semibold text-neutral-900 pb-2 border-b border-neutral-200">
           Thermal Parameters
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -217,10 +217,12 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
           Advanced Settings
         </button>
         {showAdvanced && (
-          <div className="space-y-6">
+          <div className="space-y-6 pt-2 pl-6 border-l-2 border-neutral-300 ml-2">
             {/* Transducer Settings */}
             <div>
-              <h3 className="text-sm font-semibold text-neutral-700 mb-3">Transducer</h3>
+              <h3 className="text-base font-semibold text-neutral-900 mb-3 pb-2 border-b border-neutral-200">
+                Transducer
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
                   label="Transducer Elements X"
@@ -253,7 +255,9 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
 
             {/* Domain Settings */}
             <div>
-              <h3 className="text-sm font-semibold text-neutral-700 mb-3">Computational Domain</h3>
+              <h3 className="text-base font-semibold text-neutral-900 mb-3 pb-2 border-b border-neutral-200">
+                Computational Domain
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
                   label="Domain Lateral X (cm)"
@@ -276,6 +280,15 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
                   help="Domain depth (must fit all tissue layers + brain)"
                   disabled={isRunning}
                 />
+              </div>
+            </div>
+
+            {/* Solver Settings */}
+            <div>
+              <h3 className="text-base font-semibold text-neutral-900 mb-3 pb-2 border-b border-neutral-200">
+                Solver
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
                   label="PML Boundary Size"
                   value={params.pml_size}
@@ -283,13 +296,6 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
                   help="Perfectly Matched Layer size"
                   disabled={isRunning}
                 />
-              </div>
-            </div>
-
-            {/* Solver Settings */}
-            <div>
-              <h3 className="text-sm font-semibold text-neutral-700 mb-3">Solver</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
                   label="Thermal Time Step (s)"
                   value={params.thermal_dt}
