@@ -154,27 +154,17 @@ def run_simulation(
         f"Focus depth: {actual_focus_depth} meters ({actual_focus_depth * 100 if actual_focus_depth else 'None (no focusing)'} cm)"
     )
     print(f"Enable azimuthal focusing: {enable_azimuthal_focusing}")
-    # Create temporary directory for acoustic simulation outputs
-    import tempfile
-    import os
 
-    temp_dir = tempfile.mkdtemp()
-    try:
-        intensity_array, max_pressure_array, medium_sound_speed, pressure_data = (
-            run_acoustic_simulation(
-                config=config,
-                output_dir=temp_dir,
-                use_gpu=True,
-                focus_depth=actual_focus_depth,
-                skip_videos=skip_videos,
-            )
+    # No output directory needed for web app - we only need the in-memory arrays
+    intensity_array, max_pressure_array, medium_sound_speed, pressure_data = (
+        run_acoustic_simulation(
+            config=config,
+            output_dir=None,
+            use_gpu=True,
+            focus_depth=actual_focus_depth,
+            skip_videos=skip_videos,
         )
-    finally:
-        # Clean up temp directory
-        import shutil
-
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
+    )
     print(f"Acoustic simulation complete, intensity shape: {intensity_array.shape}")
     print(f"Max pressure shape: {max_pressure_array.shape}")
     print(f"Medium sound speed shape: {medium_sound_speed.shape}")
