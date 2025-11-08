@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import SimulationForm from './components/SimulationForm';
 import ResultsDisplay from './components/ResultsDisplay';
 import VisualizationPanel from './components/VisualizationPanel';
@@ -17,6 +17,7 @@ export default function Home() {
   const [hasTemperature, setHasTemperature] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [completionTime, setCompletionTime] = useState<number | null>(null);
+  const elapsedTimeRef = useRef(0);
 
   const checkResults = useCallback(async () => {
     if (!jobId) return;
@@ -33,7 +34,7 @@ export default function Home() {
         setVisualizations(results.visualizations);
         setTimeSeries(results.time_series);
         setHasTemperature(results.has_temperature || false);
-        setCompletionTime(elapsedTime);
+        setCompletionTime(elapsedTimeRef.current);
       } else if (results.status === 'error') {
         const errorMsg = results.metadata && 'message' in results.metadata
           ? results.metadata.message
@@ -66,7 +67,9 @@ export default function Home() {
 
     const startTime = Date.now();
     const timer = setInterval(() => {
-      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedTime(elapsed);
+      elapsedTimeRef.current = elapsed;
     }, 1000);
 
     return () => clearInterval(timer);
@@ -82,6 +85,7 @@ export default function Home() {
     setHasTemperature(false);
     setElapsedTime(0);
     setCompletionTime(null);
+    elapsedTimeRef.current = 0;
 
     try {
       const response = await startSimulation(params);
