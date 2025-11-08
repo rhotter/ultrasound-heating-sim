@@ -1,6 +1,5 @@
 import numpy as np
 from typing import Tuple, Optional
-from dataclasses import dataclass
 
 from kwave.kgrid import kWaveGrid
 from kwave.kmedium import kWaveMedium
@@ -15,9 +14,7 @@ from src.config import SimulationConfig
 
 
 class PressureSimulator:
-    def __init__(
-        self, config: SimulationConfig, focus_depth: Optional[float] = None
-    ):
+    def __init__(self, config: SimulationConfig, focus_depth: Optional[float] = None):
         self.config = config
         self.kgrid: Optional[kWaveGrid] = None
         self.medium: Optional[kWaveMedium] = None
@@ -67,10 +64,11 @@ class PressureSimulator:
             self.medium.sound_speed[mask] = tissue.sound_speed
             self.medium.density[mask] = tissue.density
 
+            # Don't include absorption in the kwave model to be conservative
             # convert from Np/m to dB/cm
-            absorption_dB_per_cm = tissue.absorption_coefficient * 8.686 / 100
-            freq_MHz = self.config.acoustic.freq / 1e6
-            self.medium.alpha_coeff[mask] = absorption_dB_per_cm / freq_MHz
+            # absorption_dB_per_cm = tissue.absorption_coefficient * 8.686 / 100
+            # freq_MHz = self.config.acoustic.freq / 1e6
+            # self.medium.alpha_coeff[mask] = absorption_dB_per_cm / freq_MHz
 
         return self.medium
 
@@ -113,7 +111,7 @@ class PressureSimulator:
                 # Create 2D meshgrid of element positions in physical coordinates
                 x_positions, y_positions = np.meshgrid(
                     x_ids * self.config.acoustic.pitch,
-                    y_ids * self.config.acoustic.pitch
+                    y_ids * self.config.acoustic.pitch,
                 )
 
                 # Calculate 3D Euclidean distance from each element to focal point at (0, 0, focus_depth)
@@ -131,17 +129,15 @@ class PressureSimulator:
                 # 1D focusing: only calculate delays based on y-distance from center (original behavior)
                 y_distances = y_ids * self.config.acoustic.pitch
                 time_delays_y = (
-                    -(
-                        np.sqrt(y_distances**2 + self.focus_depth**2)
-                        - self.focus_depth
-                    )
+                    -(np.sqrt(y_distances**2 + self.focus_depth**2) - self.focus_depth)
                     / cavg
                 )
                 time_delays_y = time_delays_y - np.min(time_delays_y)
 
                 # Repeat the same delay pattern for each column (x-direction)
                 time_delays = np.tile(
-                    time_delays_y[:, np.newaxis], (1, self.config.acoustic.num_elements_x)
+                    time_delays_y[:, np.newaxis],
+                    (1, self.config.acoustic.num_elements_x),
                 ).flatten()
         else:
             time_delays = np.zeros(
@@ -160,17 +156,25 @@ class PressureSimulator:
 
         # Define source mask - place individual elements on a grid
         # Each element occupies one grid point, spaced by pitch
-        element_spacing_x = max(1, int(self.config.acoustic.pitch / self.config.grid.dx))
-        element_spacing_y = max(1, int(self.config.acoustic.pitch / self.config.grid.dy))
+        element_spacing_x = max(
+            1, int(self.config.acoustic.pitch / self.config.grid.dx)
+        )
+        element_spacing_y = max(
+            1, int(self.config.acoustic.pitch / self.config.grid.dy)
+        )
 
         # Calculate total array size in grid points
         array_size_x = (self.config.acoustic.num_elements_x - 1) * element_spacing_x + 1
         array_size_y = (self.config.acoustic.num_elements_y - 1) * element_spacing_y + 1
 
-        print(f"Transducer array: {self.config.acoustic.num_elements_x}x{self.config.acoustic.num_elements_y} elements")
+        print(
+            f"Transducer array: {self.config.acoustic.num_elements_x}x{self.config.acoustic.num_elements_y} elements"
+        )
         print(f"Element spacing: {element_spacing_x}x{element_spacing_y} grid points")
         print(f"Array size: {array_size_x}x{array_size_y} grid points")
-        print(f"Domain size: {self.config.grid.Nx}x{self.config.grid.Ny}x{self.config.grid.Nz} grid points")
+        print(
+            f"Domain size: {self.config.grid.Nx}x{self.config.grid.Ny}x{self.config.grid.Nz} grid points"
+        )
 
         # Check if array fits in domain
         if array_size_x > self.config.grid.Nx or array_size_y > self.config.grid.Ny:
@@ -180,7 +184,7 @@ class PressureSimulator:
                 f"With {self.config.acoustic.num_elements_x}x{self.config.acoustic.num_elements_y} elements at "
                 f"{element_spacing_x}x{element_spacing_y} spacing, the array needs at least "
                 f"{array_size_x}x{array_size_y} grid points. "
-                f"Increase domain lateral dimensions (Lx={self.config.grid.Lx*100:.2f}cm, Ly={self.config.grid.Ly*100:.2f}cm) "
+                f"Increase domain lateral dimensions (Lx={self.config.grid.Lx * 100:.2f}cm, Ly={self.config.grid.Ly * 100:.2f}cm) "
                 f"or reduce number of elements."
             )
 
@@ -189,7 +193,9 @@ class PressureSimulator:
         y_start = int((self.config.grid.Ny - array_size_y) / 2)
 
         print(f"Array start position: ({x_start}, {y_start})")
-        print(f"Array end position: ({x_start + array_size_x - 1}, {y_start + array_size_y - 1})")
+        print(
+            f"Array end position: ({x_start + array_size_x - 1}, {y_start + array_size_y - 1})"
+        )
 
         source_mask = np.zeros(self.kgrid.k.shape)
 
@@ -200,14 +206,19 @@ class PressureSimulator:
                 x_pos = x_start + i * element_spacing_x
                 y_pos = y_start + j * element_spacing_y
                 # Ensure we're within bounds
-                if 0 <= x_pos < self.config.grid.Nx and 0 <= y_pos < self.config.grid.Ny:
+                if (
+                    0 <= x_pos < self.config.grid.Nx
+                    and 0 <= y_pos < self.config.grid.Ny
+                ):
                     source_mask[x_pos, y_pos, self.config.acoustic.source_z_pos] = 1
                     num_elements_placed += 1
                 else:
                     print(f"Warning: Element at ({x_pos}, {y_pos}) is out of bounds!")
 
         # Verify the number of source points matches the number of signals
-        expected_elements = self.config.acoustic.num_elements_x * self.config.acoustic.num_elements_y
+        expected_elements = (
+            self.config.acoustic.num_elements_x * self.config.acoustic.num_elements_y
+        )
         if num_elements_placed != expected_elements:
             raise ValueError(
                 f"Source mask has {num_elements_placed} elements but {expected_elements} signals were created. "
