@@ -38,48 +38,65 @@ class TissueProperties:
 class GridConfig:
     """Configuration parameters for the simulation grid, shared between acoustic and thermal."""
 
-    # Grid parameters
-    domain_size_x: int = 256  # Total domain size before PML subtraction
-    domain_size_y: int = 128
-    domain_size_z: int = 150
+    # Physical domain size [m] - specify what you want, grid points are auto-calculated
+    Lx: float = 0.05  # 5 cm in x direction
+    Ly: float = 0.025  # 2.5 cm in y direction
+    Lz: float = 0.03  # 3 cm in z direction (will be auto-adjusted to fit tissue layers)
 
-    # PML parameters
-    pml_size: int = 10  # Size of the PML layer
-
-    # Derived parameters
+    # Grid spacing [m]
     dx: float = 208e-6  # [m] 208 µm to match transducer pitch
     dy: float = 208e-6  # [m]
     dz: float = 208e-6  # [m]
 
+    # PML parameters
+    pml_size: int = 10  # Size of the PML layer
+
     @property
     def Nx(self) -> int:
         """Computational domain size in x direction (excluding PML)"""
-        return self.domain_size_x - 2 * self.pml_size
+        return int(self.Lx / self.dx)
 
     @property
     def Ny(self) -> int:
         """Computational domain size in y direction (excluding PML)"""
-        return self.domain_size_y - 2 * self.pml_size
+        return int(self.Ly / self.dy)
 
     @property
     def Nz(self) -> int:
         """Computational domain size in z direction (excluding PML)"""
-        return self.domain_size_z - 2 * self.pml_size
+        return int(self.Lz / self.dz)
 
     @property
-    def Lx(self) -> float:
-        """Domain size in x direction [m]"""
-        return self.Nx * self.dx
+    def domain_size_x(self) -> int:
+        """Total domain size in x including PML"""
+        return self.Nx + 2 * self.pml_size
 
     @property
-    def Ly(self) -> float:
-        """Domain size in y direction [m]"""
-        return self.Ny * self.dy
+    def domain_size_y(self) -> int:
+        """Total domain size in y including PML"""
+        return self.Ny + 2 * self.pml_size
 
     @property
-    def Lz(self) -> float:
-        """Domain size in z direction [m]"""
-        return self.Nz * self.dz
+    def domain_size_z(self) -> int:
+        """Total domain size in z including PML"""
+        return self.Nz + 2 * self.pml_size
+
+    def compute_min_Lz(self, tissue_layers: list["TissueProperties"], brain_thickness: float = 0.01) -> float:
+        """
+        Compute minimum Lz needed to fit all tissue layers plus desired brain thickness.
+
+        Args:
+            tissue_layers: List of tissue layers (excluding last/innermost layer)
+            brain_thickness: Desired thickness of brain layer [m], default 1cm
+
+        Returns:
+            Minimum Lz in meters
+        """
+        total_thickness = brain_thickness
+        for tissue in tissue_layers[:-1]:  # All except innermost (brain)
+            if tissue.thickness is not None:
+                total_thickness += tissue.thickness
+        return total_thickness
 
 
 @dataclass
@@ -195,6 +212,15 @@ class SimulationConfig:
     thermal: ThermalConfig = field(default_factory=ThermalConfig)
 
     def __post_init__(self):
+        # Check that Lz is large enough for all tissue layers plus at least 1cm of brain
+        min_Lz = self.grid.compute_min_Lz(self.tissue_layers, brain_thickness=0.01)
+        if self.grid.Lz < min_Lz:
+            raise ValueError(
+                f"Domain depth (Lz={self.grid.Lz*1000:.1f}mm) is too small to fit all tissue layers. "
+                f"Minimum required: {min_Lz*1000:.1f}mm (tissue layers + 1cm brain). "
+                f"Increase Lz to at least {min_Lz:.4f}m"
+            )
+
         # Compute blood perfusion coefficient for thermal simulation (B = ρ_b·c_b·w_b)
         for tissue in self.tissue_layers:
             tissue.B = (

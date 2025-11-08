@@ -40,10 +40,10 @@ def main():
         help="Save tissue property distributions to npy files",
     )
     parser.add_argument(
-        "--transmit-focus",
+        "--focus-depth",
         type=float,
         default=None,
-        help="Transmit focus distance in meters. If not specified, plane wave transmission is used.",
+        help="Focus depth in meters (for elevational focusing). If not specified, plane wave transmission is used.",
     )
     parser.add_argument(
         "--azimuthal-focusing",
@@ -73,10 +73,10 @@ def main():
     if args.config_brna2025:
         print("Using Brna et al. 2025 configuration")
         config = SimulationConfigBrna2025()
-        # Override transmit focus if not specified
-        if args.transmit_focus is None:
-            args.transmit_focus = FOCAL_DEPTH_BRNA2025
-            print(f"Setting focal depth to {args.transmit_focus*1e3:.1f} mm (2mm below skull)")
+        # Override focus depth if not specified
+        if args.focus_depth is None:
+            args.focus_depth = FOCAL_DEPTH_BRNA2025
+            print(f"Setting focal depth to {args.focus_depth*1e3:.1f} mm (2mm below skull)")
     else:
         config = SimulationConfig()
 
@@ -98,7 +98,7 @@ def main():
             config,
             args.output_dir,
             use_gpu=not args.use_cpu,
-            transmit_focus=args.transmit_focus,
+            focus_depth=args.focus_depth,
         )
 
     # Run heat simulation (unless acoustic-only mode)

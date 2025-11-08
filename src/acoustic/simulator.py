@@ -16,7 +16,7 @@ from src.config import SimulationConfig
 
 class PressureSimulator:
     def __init__(
-        self, config: SimulationConfig, transmit_focus: Optional[float] = None
+        self, config: SimulationConfig, focus_depth: Optional[float] = None
     ):
         self.config = config
         self.kgrid: Optional[kWaveGrid] = None
@@ -25,10 +25,10 @@ class PressureSimulator:
         self.sensor: Optional[kSensor] = None
         self.sensor_data: Optional[dict] = None
 
-        if transmit_focus is None:
-            self.transmit_focus = np.inf
+        if focus_depth is None:
+            self.focus_depth = np.inf
         else:
-            self.transmit_focus = transmit_focus
+            self.focus_depth = focus_depth
 
     def setup_grid(self) -> kWaveGrid:
         """Create and configure the k-Wave grid."""
@@ -103,7 +103,7 @@ class PressureSimulator:
             )
 
         # Calculate time delays for focusing
-        if not np.isinf(self.transmit_focus):
+        if not np.isinf(self.focus_depth):
             c0 = 1500
             cmax = max(tissue.sound_speed for tissue in self.config.tissue_layers)
             cavg = (c0 + cmax) / 2
@@ -116,13 +116,13 @@ class PressureSimulator:
                     y_ids * self.config.acoustic.pitch
                 )
 
-                # Calculate 3D Euclidean distance from each element to focal point at (0, 0, transmit_focus)
+                # Calculate 3D Euclidean distance from each element to focal point at (0, 0, focus_depth)
                 distances = np.sqrt(
-                    x_positions**2 + y_positions**2 + self.transmit_focus**2
+                    x_positions**2 + y_positions**2 + self.focus_depth**2
                 )
 
                 # Time delays for spherical wavefront convergence
-                time_delays_2d = -(distances - self.transmit_focus) / cavg
+                time_delays_2d = -(distances - self.focus_depth) / cavg
                 time_delays_2d = time_delays_2d - np.min(time_delays_2d)
 
                 # Flatten to 1D array (row-major order: Y varies faster than X)
@@ -132,8 +132,8 @@ class PressureSimulator:
                 y_distances = y_ids * self.config.acoustic.pitch
                 time_delays_y = (
                     -(
-                        np.sqrt(y_distances**2 + self.transmit_focus**2)
-                        - self.transmit_focus
+                        np.sqrt(y_distances**2 + self.focus_depth**2)
+                        - self.focus_depth
                     )
                     / cavg
                 )

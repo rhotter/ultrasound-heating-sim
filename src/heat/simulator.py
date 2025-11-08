@@ -291,7 +291,7 @@ class BioheatSimulator:
             "layer_map": self.layer_map,
             "A": self.A,
             "Kt": self.Kt,
-            "B": self.B
+            "B": self.B,
         }
 
         for name, tensor in properties.items():
@@ -466,7 +466,7 @@ class BioheatSimulator:
             rsnew = torch.sum(r * r)
             if torch.sqrt(rsnew) < tol:
                 print(
-                    f"CG converged in {it+1} iterations with residual {torch.sqrt(rsnew):.3e}"
+                    f"CG converged in {it + 1} iterations with residual {torch.sqrt(rsnew):.3e}"
                 )
                 break
             p = r + (rsnew / rsold) * p
@@ -563,7 +563,7 @@ class BioheatSimulator:
         # Calculate performance
         elapsed = time.time() - start_time
         print(
-            f"Simulation completed in {elapsed:.2f} seconds ({steps/elapsed:.1f} steps/second)"
+            f"Simulation completed in {elapsed:.2f} seconds ({steps / elapsed:.1f} steps/second)"
         )
 
         return T_history, times, max_temps
