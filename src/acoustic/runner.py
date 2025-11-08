@@ -32,7 +32,7 @@ def run_acoustic_simulation(
     """
     print("\n=== Starting Acoustic Simulation ===")
 
-# Initialize simulator
+    # Initialize simulator
     simulator = PressureSimulator(config, focus_depth=focus_depth)
 
     # Set up the grid
@@ -45,7 +45,9 @@ def run_acoustic_simulation(
 
     # Plot the medium properties
     if output_dir is not None:
-        fig, ax = plot_medium_properties(simulator.medium.sound_speed, config, focus_depth=focus_depth)
+        fig, ax = plot_medium_properties(
+            simulator.medium.sound_speed, config, focus_depth=focus_depth
+        )
         plt.savefig(os.path.join(output_dir, "A0_medium_properties.png"))
         plt.close()
 
@@ -72,10 +74,12 @@ def run_acoustic_simulation(
     # Print maximum pressure analysis
     max_pressure_value = np.max(max_pressure)
     print(f"\n=== Acoustic Pressure Analysis ===")
-    print(f"Max pressure (peak): {max_pressure_value/1e6:.3f} MPa")
-    print(f"Max pressure (RMS): {max_pressure_value/(np.sqrt(2)*1e6):.3f} MPa")
-    print(f"Source pressure: {config.acoustic.source_magnitude/1e6:.3f} MPa")
-    print(f"Pressure gain: {max_pressure_value/config.acoustic.source_magnitude:.2f}x")
+    print(f"Max pressure (peak): {max_pressure_value / 1e6:.3f} MPa")
+    print(f"Max pressure (RMS): {max_pressure_value / (np.sqrt(2) * 1e6):.3f} MPa")
+    print(f"Source pressure: {config.acoustic.source_magnitude / 1e6:.3f} MPa")
+    print(
+        f"Pressure gain: {max_pressure_value / config.acoustic.source_magnitude:.2f}x"
+    )
 
     if output_dir is not None:
         plt.figure()
