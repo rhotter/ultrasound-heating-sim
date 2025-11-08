@@ -13,7 +13,7 @@ from src.config import SimulationConfig
 
 def run_acoustic_simulation(
     config: SimulationConfig, output_dir: Optional[str] = None, use_gpu: bool = True, focus_depth: Optional[float] = None
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Run the acoustic simulation to generate intensity and max pressure data.
 
     Args:
@@ -23,7 +23,7 @@ def run_acoustic_simulation(
         focus_depth: Optional focus depth in meters (for elevational focusing)
 
     Returns:
-        tuple: (average_intensity, max_pressure, medium_sound_speed) arrays
+        tuple: (average_intensity, max_pressure, medium_sound_speed, pressure_data) arrays
     """
     print("\n=== Starting Acoustic Simulation ===")
 
@@ -103,4 +103,4 @@ def run_acoustic_simulation(
         except Exception as e:
             print(f"Skipping pressure video creation: {e}")
 
-    return average_intensity, max_pressure, simulator.medium.sound_speed
+    return average_intensity, max_pressure, simulator.medium.sound_speed, pressure_data

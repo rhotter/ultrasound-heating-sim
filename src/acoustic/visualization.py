@@ -183,16 +183,20 @@ def plot_intensity_field(
     if slice_y is None:
         slice_y = config.grid.Ny // 2
 
+    # Calculate extent in cm
+    extent = [0, config.grid.Lx * 100, config.grid.Lz * 100, 0]  # [left, right, bottom, top]
+
     fig, ax = plt.subplots(figsize=(10, 8))
     im = ax.imshow(
         1e-4 * 1e3 * intensity_data[:, slice_y, :].T,  # to mW/cm^2
         cmap="hot",
         aspect="auto",
+        extent=extent,
     )
     plt.colorbar(im, label="Intensity [mW/cm²]")
     ax.set_title(title)
-    ax.set_xlabel("X position [grid points]")
-    ax.set_ylabel("Z position [grid points]")
+    ax.set_xlabel("X position (cm)")
+    ax.set_ylabel("Z position (cm)")
 
     return fig, ax
 

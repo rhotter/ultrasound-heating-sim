@@ -62,7 +62,7 @@ image = build_image()
 
 @app.function(
     image=image,
-    gpu="T4",  # Use T4 GPU (can upgrade to A100 for faster compute)
+    gpu="A10",  # Use T4 GPU (can upgrade to A100 for faster compute)
     timeout=3600,  # 1 hour timeout
 )
 def run_simulation(
@@ -149,15 +149,26 @@ def run_simulation(
 
     # Run acoustic simulation
     print("Starting acoustic simulation...")
-    intensity_array, max_pressure_array, medium_sound_speed = run_acoustic_simulation(
-        config=config,
-        output_dir=None,
-        use_gpu=True,
-        focus_depth=focus_depth,
+    # Convert focus_depth = 0 to None (no focusing)
+    actual_focus_depth = (
+        None if focus_depth == 0 or focus_depth is None else focus_depth
+    )
+    print(
+        f"Focus depth: {actual_focus_depth} meters ({actual_focus_depth * 100 if actual_focus_depth else 'None (no focusing)'} cm)"
+    )
+    print(f"Enable azimuthal focusing: {enable_azimuthal_focusing}")
+    intensity_array, max_pressure_array, medium_sound_speed, pressure_data = (
+        run_acoustic_simulation(
+            config=config,
+            output_dir=None,
+            use_gpu=True,
+            focus_depth=actual_focus_depth,
+        )
     )
     print(f"Acoustic simulation complete, intensity shape: {intensity_array.shape}")
     print(f"Max pressure shape: {max_pressure_array.shape}")
     print(f"Medium sound speed shape: {medium_sound_speed.shape}")
+    print(f"Pressure data shape: {pressure_data.shape}")
 
     # Generate visualizations
     visualizations = {}
@@ -165,11 +176,22 @@ def run_simulation(
     # Max pressure visualization
     mid_slice_pressure = max_pressure_array[:, max_pressure_array.shape[1] // 2, :]
     fig, ax = plt.subplots(figsize=(8, 6))
+    # Set extent to physical dimensions in cm
+    extent = [
+        0,
+        config.grid.Lx * 100,
+        config.grid.Lz * 100,
+        0,
+    ]  # [left, right, bottom, top]
     im = ax.imshow(
-        mid_slice_pressure.T * 1e-6, aspect="auto", cmap="coolwarm", origin="lower"
+        mid_slice_pressure.T * 1e-6,
+        aspect="auto",
+        cmap="coolwarm",
+        origin="upper",
+        extent=extent,
     )
-    ax.set_xlabel("X position")
-    ax.set_ylabel("Z position (depth)")
+    ax.set_xlabel("X position (cm)")
+    ax.set_ylabel("Z position (depth, cm)")
     ax.set_title("Max Pressure (MPa)")
     plt.colorbar(im, ax=ax, label="Pressure (MPa)")
     buf = io.BytesIO()
@@ -181,10 +203,22 @@ def run_simulation(
     # Intensity visualization
     mid_slice_intensity = intensity_array[:, intensity_array.shape[1] // 2, :]
     fig, ax = plt.subplots(figsize=(8, 6))
-    im = ax.imshow(mid_slice_intensity.T, aspect="auto", cmap="viridis", origin="lower")
-    ax.set_xlabel("X position")
-    ax.set_ylabel("Z position (depth)")
-    ax.set_title("Acoustic Intensity (W/m²)")
+    extent = [
+        0,
+        config.grid.Lx * 100,
+        config.grid.Lz * 100,
+        0,
+    ]  # [left, right, bottom, top]
+    im = ax.imshow(
+        mid_slice_intensity.T,
+        aspect="auto",
+        cmap="viridis",
+        origin="upper",
+        extent=extent,
+    )
+    ax.set_xlabel("X position (cm)")
+    ax.set_ylabel("Z position (depth, cm)")
+    ax.set_title("Time-Averaged Acoustic Intensity (W/m²)")
     plt.colorbar(im, ax=ax, label="Intensity (W/m²)")
     buf = io.BytesIO()
     plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
@@ -193,12 +227,87 @@ def run_simulation(
     plt.close()
 
     # Medium properties visualization
-    fig, ax = plot_medium_properties(medium_sound_speed, config, focus_depth=focus_depth)
+    fig, ax = plot_medium_properties(
+        medium_sound_speed, config, focus_depth=actual_focus_depth
+    )
     buf = io.BytesIO()
     plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
     buf.seek(0)
     visualizations["medium"] = base64.b64encode(buf.read()).decode("utf-8")
     plt.close()
+
+    # Pressure video
+    print("Generating pressure video...")
+    import tempfile
+    import os
+    import matplotlib.animation as animation
+
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_video:
+        video_path = tmp_video.name
+    try:
+        # Take mid-slice in Y direction
+        pressure_slice = pressure_data[:, :, pressure_data.shape[2] // 2, :]
+
+        # Downsample to ~100 frames
+        downsample = max(1, pressure_slice.shape[0] // 100)
+        pressure_frames = pressure_slice[::downsample]
+
+        # Calculate fps to make video exactly 5 seconds
+        video_duration = 5.0  # seconds
+        fps = len(pressure_frames) / video_duration
+
+        # Get global max for symmetric colorbar
+        vmax = float(np.max(np.abs(pressure_frames)))
+        vmin = -vmax
+
+        # Create animation with minimal padding
+        fig, ax = plt.subplots(figsize=(8, 6))
+        extent = [
+            0,
+            config.grid.Lx * 100,
+            config.grid.Lz * 100,
+            0,
+        ]  # [left, right, bottom, top]
+        im = ax.imshow(
+            pressure_frames[0].T,
+            aspect="auto",
+            cmap="coolwarm",
+            origin="upper",
+            vmin=vmin,
+            vmax=vmax,
+            extent=extent,
+        )
+        ax.set_xlabel("X position (cm)")
+        ax.set_ylabel("Z position (depth, cm)")
+        cbar = plt.colorbar(im, ax=ax, label="Pressure (Pa)")
+
+        def update(frame):
+            im.set_array(pressure_frames[frame].T)
+            ax.set_title(f"Pressure Field - {frame * downsample * config.acoustic.dt * 1e6:.2f} μs")
+            return [im]
+
+        interval_ms = 1000.0 / fps  # milliseconds between frames
+        anim = animation.FuncAnimation(
+            fig, update, frames=len(pressure_frames), interval=interval_ms, blit=True
+        )
+        # Use tight layout before saving to minimize whitespace
+        fig.tight_layout(pad=0.1)
+        anim.save(video_path, writer="ffmpeg", fps=fps)
+        plt.close()
+
+        with open(video_path, "rb") as f:
+            visualizations["pressure_video"] = base64.b64encode(f.read()).decode(
+                "utf-8"
+            )
+        print("Pressure video generated successfully")
+    except Exception as e:
+        print(f"Error generating pressure video: {e}")
+        import traceback
+
+        traceback.print_exc()
+    finally:
+        if os.path.exists(video_path):
+            os.unlink(video_path)
 
     max_intensity = float(np.max(intensity_array))
     mean_intensity = float(np.mean(intensity_array))
@@ -276,11 +385,22 @@ def run_simulation(
         # Generate temperature visualization
         mid_slice_temp = final_temp[:, final_temp.shape[1] // 2, :]
         fig, ax = plt.subplots(figsize=(8, 6))
+        extent = [
+            0,
+            config.grid.Lx * 100,
+            config.grid.Lz * 100,
+            0,
+        ]  # [left, right, bottom, top]
         im = ax.imshow(
-            mid_slice_temp.T, aspect="auto", cmap="hot", origin="lower", vmin=37
+            mid_slice_temp.T,
+            aspect="auto",
+            cmap="hot",
+            origin="upper",
+            vmin=37,
+            extent=extent,
         )
-        ax.set_xlabel("X position")
-        ax.set_ylabel("Z position (depth)")
+        ax.set_xlabel("X position (cm)")
+        ax.set_ylabel("Z position (depth, cm)")
         ax.set_title("Temperature (°C)")
         cbar = plt.colorbar(im, ax=ax, label="Temperature (°C)")
         cbar.formatter.set_useOffset(False)
@@ -313,11 +433,92 @@ def run_simulation(
                 brain_temps.append(float(torch.max(T_tensor[brain_mask]).cpu().numpy()))
 
             result["time_series"] = {
-                "time": [i * thermal_dt for i in range(len(T_history))],
+                "time": [
+                    i * thermal_dt * config.thermal.save_every
+                    for i in range(len(T_history))
+                ],
                 "skull": skull_temps,
                 "brain": brain_temps,
             }
             result["has_temperature"] = True
+
+            # Generate temperature video for time-dependent simulations
+            print("Generating temperature video...")
+            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_video:
+                video_path = tmp_video.name
+            try:
+                import matplotlib.animation as animation
+
+                # Convert T_history to numpy arrays and get mid-slices
+                T_slices = []
+                for T_field in T_history:
+                    T_np = (
+                        T_field.cpu().numpy()
+                        if isinstance(T_field, torch.Tensor)
+                        else np.array(T_field)
+                    )
+                    # Take mid-slice in Y direction, same as static image
+                    mid_slice = T_np[:, T_np.shape[1] // 2, :]
+                    T_slices.append(mid_slice)
+
+                # Get global min/max for consistent colorbar
+                all_temps = np.array([t.flatten() for t in T_slices])
+                vmin = 37  # Same as static image
+                vmax = float(np.max(all_temps))
+
+                # Create animation
+                fig, ax = plt.subplots(figsize=(8, 6))
+                extent = [
+                    0,
+                    config.grid.Lx * 100,
+                    config.grid.Lz * 100,
+                    0,
+                ]  # [left, right, bottom, top]
+                im = ax.imshow(
+                    T_slices[0].T,
+                    aspect="auto",
+                    cmap="hot",
+                    origin="upper",
+                    vmin=vmin,
+                    vmax=vmax,
+                    extent=extent,
+                )
+                ax.set_xlabel("X position (cm)")
+                ax.set_ylabel("Z position (depth, cm)")
+                cbar = plt.colorbar(im, ax=ax, label="Temperature (°C)")
+                cbar.formatter.set_useOffset(False)
+                cbar.formatter.set_scientific(False)
+
+                def update(frame):
+                    im.set_array(T_slices[frame].T)
+                    actual_time = frame * thermal_dt * config.thermal.save_every
+                    ax.set_title(f"Temperature (°C) - Time: {actual_time:.1f}s")
+                    return [im]
+
+                # Calculate fps to make video exactly 5 seconds
+                video_duration = 5.0  # seconds
+                fps = len(T_slices) / video_duration
+                interval_ms = 1000.0 / fps  # milliseconds between frames
+
+                anim = animation.FuncAnimation(
+                    fig, update, frames=len(T_slices), interval=interval_ms, blit=True
+                )
+                anim.save(video_path, writer="ffmpeg", fps=fps)
+                plt.close()
+
+                with open(video_path, "rb") as f:
+                    result["visualizations"]["temperature_video"] = base64.b64encode(
+                        f.read()
+                    ).decode("utf-8")
+                print("Temperature video generated successfully")
+            except Exception as e:
+                print(f"Error generating temperature video: {e}")
+                import traceback
+
+                traceback.print_exc()
+            finally:
+                if os.path.exists(video_path):
+                    os.unlink(video_path)
         else:
             result["has_temperature"] = True
             result["time_series"] = None

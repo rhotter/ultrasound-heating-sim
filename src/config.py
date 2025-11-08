@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional
-import torch
 import numpy as np
 
 
@@ -81,7 +80,9 @@ class GridConfig:
         """Total domain size in z including PML"""
         return self.Nz + 2 * self.pml_size
 
-    def compute_min_Lz(self, tissue_layers: list["TissueProperties"], brain_thickness: float = 0.01) -> float:
+    def compute_min_Lz(
+        self, tissue_layers: list["TissueProperties"], brain_thickness: float = 0.01
+    ) -> float:
         """
         Compute minimum Lz needed to fit all tissue layers plus desired brain thickness.
 
@@ -187,7 +188,7 @@ class SimulationConfig:
                 sound_speed=2770,  # [m/s]
                 density=1908,  # [kg/m^3]
                 thickness=7e-3,  # 7 mm
-                absorption_coefficient=109.1,  # [Np/m] at 2 MHz
+                absorption_coefficient=0,  # 109.1,  # [Np/m] at 2 MHz
                 specific_heat=1313,  # [J/(kg·K)]
                 thermal_conductivity=0.32,  # [W/(m·K)]
                 heat_transfer_rate=10,  # [ml/min/kg]
@@ -216,8 +217,8 @@ class SimulationConfig:
         min_Lz = self.grid.compute_min_Lz(self.tissue_layers, brain_thickness=0.01)
         if self.grid.Lz < min_Lz:
             raise ValueError(
-                f"Domain depth (Lz={self.grid.Lz*1000:.1f}mm) is too small to fit all tissue layers. "
-                f"Minimum required: {min_Lz*1000:.1f}mm (tissue layers + 1cm brain). "
+                f"Domain depth (Lz={self.grid.Lz * 1000:.1f}mm) is too small to fit all tissue layers. "
+                f"Minimum required: {min_Lz * 1000:.1f}mm (tissue layers + 1cm brain). "
                 f"Increase Lz to at least {min_Lz:.4f}m"
             )
 

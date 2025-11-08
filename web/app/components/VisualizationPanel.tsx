@@ -8,6 +8,8 @@ interface VisualizationPanelProps {
     intensity?: string;
     medium?: string;
     temperature?: string;
+    pressure_video?: string;
+    temperature_video?: string;
   };
   timeSeries: {
     time: number[];
@@ -46,6 +48,7 @@ export default function VisualizationPanel({ visualizations, timeSeries, hasTemp
               <YAxis
                 label={{ value: 'Temperature (°C)', angle: -90, position: 'insideLeft' }}
                 stroke="#6b7280"
+                domain={['auto', 'auto']}
               />
               <Tooltip />
               <Legend />
@@ -69,6 +72,41 @@ export default function VisualizationPanel({ visualizations, timeSeries, hasTemp
           </ResponsiveContainer>
         </div>
       )}
+
+      {/* Videos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {visualizations.pressure_video && (
+          <div className="bg-white p-4 border border-gray-200 rounded-lg">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">
+              Acoustic Pressure Wave Propagation
+            </h3>
+            <video
+              controls
+              loop
+              className="w-full rounded"
+              src={`data:video/mp4;base64,${visualizations.pressure_video}`}
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        )}
+
+        {visualizations.temperature_video && (
+          <div className="bg-white p-4 border border-gray-200 rounded-lg">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">
+              Temperature Evolution
+            </h3>
+            <video
+              controls
+              loop
+              className="w-full rounded"
+              src={`data:video/mp4;base64,${visualizations.temperature_video}`}
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        )}
+      </div>
 
       {/* Slice images */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

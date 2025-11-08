@@ -49,6 +49,8 @@ export interface ResultsResponse {
     intensity?: string;
     medium?: string;
     temperature?: string;
+    pressure_video?: string;
+    temperature_video?: string;
   };
   time_series?: {
     time: number[];

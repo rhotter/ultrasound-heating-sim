@@ -90,22 +90,6 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
             help="Pulse Repetition Frequency"
             disabled={isRunning}
           />
-          <FormField
-            label="Transducer Elements X"
-            value={params.num_elements_x}
-            onChange={(v) => handleChange('num_elements_x', v)}
-            min={1}
-            help="Transducer elements in X"
-            disabled={isRunning}
-          />
-          <FormField
-            label="Transducer Elements Y"
-            value={params.num_elements_y}
-            onChange={(v) => handleChange('num_elements_y', v)}
-            min={1}
-            help="Transducer elements in Y"
-            disabled={isRunning}
-          />
           <SelectField
             label="Focus Type"
             value={params.focus_depth === null || params.focus_depth === 0 ? 'none' : (params.enable_azimuthal_focusing ? 'both' : 'elevational')}
@@ -113,11 +97,18 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
               if (v === 'none') {
                 handleChange('focus_depth', 0);
                 handleChange('enable_azimuthal_focusing', false);
+                setFocusDepthCm(0);
               } else if (v === 'elevational') {
-                if (params.focus_depth === null || params.focus_depth === 0) handleChange('focus_depth', 0.015);
+                if (params.focus_depth === null || params.focus_depth === 0) {
+                  handleChange('focus_depth', 0.015);
+                  setFocusDepthCm(1.5);
+                }
                 handleChange('enable_azimuthal_focusing', false);
               } else if (v === 'both') {
-                if (params.focus_depth === null || params.focus_depth === 0) handleChange('focus_depth', 0.015);
+                if (params.focus_depth === null || params.focus_depth === 0) {
+                  handleChange('focus_depth', 0.015);
+                  setFocusDepthCm(1.5);
+                }
                 handleChange('enable_azimuthal_focusing', true);
               }
             }}
@@ -166,20 +157,13 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
             min={10}
             step={10}
             help="Total simulation time"
-            disabled={isRunning}
+            disabled={isRunning || params.steady_state}
           />
           <CheckboxField
             label="Steady State"
             checked={params.steady_state}
             onChange={(v) => handleChange('steady_state', v)}
             help="Use steady-state solver"
-            disabled={isRunning}
-          />
-          <CheckboxField
-            label="Acoustic Only"
-            checked={params.acoustic_only}
-            onChange={(v) => handleChange('acoustic_only', v)}
-            help="Skip thermal simulation"
             disabled={isRunning}
           />
         </div>
@@ -200,6 +184,22 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
         </button>
         {showAdvanced && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <FormField
+              label="Transducer Elements X"
+              value={params.num_elements_x}
+              onChange={(v) => handleChange('num_elements_x', v)}
+              min={1}
+              help="Transducer elements in X (azimuthal)"
+              disabled={isRunning}
+            />
+            <FormField
+              label="Transducer Elements Y"
+              value={params.num_elements_y}
+              onChange={(v) => handleChange('num_elements_y', v)}
+              min={1}
+              help="Transducer elements in Y (elevational)"
+              disabled={isRunning}
+            />
             <FormField
               label="Domain Lateral X (cm)"
               value={LxCm}
@@ -301,16 +301,18 @@ interface CheckboxFieldProps {
 }
 
 function CheckboxField({ label, checked, onChange, help, disabled }: CheckboxFieldProps) {
+  const id = `checkbox-${label.toLowerCase().replace(/\s+/g, '-')}`;
   return (
     <div className="flex items-center gap-2 pt-7">
       <input
+        id={id}
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
         className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 disabled:cursor-not-allowed"
       />
-      <label className="font-medium text-gray-700 text-sm">{label}</label>
+      <label htmlFor={id} className="font-medium text-gray-700 text-sm cursor-pointer">{label}</label>
     </div>
   );
 }

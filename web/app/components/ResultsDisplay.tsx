@@ -53,11 +53,11 @@ export default function ResultsDisplay({ status, jobId, metadata, error, hasTemp
             {metadata.max_temp_rise_skull_C !== undefined && (
               <>
                 <MetricRow
-                  label="Max Skull Temp Rise"
+                  label="Max Skull Temp"
                   value={`${metadata.max_temp_rise_skull_C.toFixed(3)} °C`}
                 />
                 <MetricRow
-                  label="Max Brain Temp Rise"
+                  label="Max Brain Temp"
                   value={`${metadata.max_temp_rise_brain_C?.toFixed(3)} °C`}
                 />
               </>

@@ -158,22 +158,61 @@ class PressureSimulator:
         )
         source_signal = self.config.acoustic.source_magnitude * source_signal
 
-        # Define source mask for plane wave
-        source_x_size = self.config.acoustic.num_elements_x * (
-            self.config.acoustic.pitch / self.config.grid.dx
-        )
-        source_y_size = self.config.acoustic.num_elements_y * (
-            self.config.acoustic.pitch / self.config.grid.dy
-        )
-        x_start = round((self.config.grid.Nx - source_x_size) / 2)
-        y_start = round((self.config.grid.Ny - source_y_size) / 2)
+        # Define source mask - place individual elements on a grid
+        # Each element occupies one grid point, spaced by pitch
+        element_spacing_x = max(1, int(self.config.acoustic.pitch / self.config.grid.dx))
+        element_spacing_y = max(1, int(self.config.acoustic.pitch / self.config.grid.dy))
+
+        # Calculate total array size in grid points
+        array_size_x = (self.config.acoustic.num_elements_x - 1) * element_spacing_x + 1
+        array_size_y = (self.config.acoustic.num_elements_y - 1) * element_spacing_y + 1
+
+        print(f"Transducer array: {self.config.acoustic.num_elements_x}x{self.config.acoustic.num_elements_y} elements")
+        print(f"Element spacing: {element_spacing_x}x{element_spacing_y} grid points")
+        print(f"Array size: {array_size_x}x{array_size_y} grid points")
+        print(f"Domain size: {self.config.grid.Nx}x{self.config.grid.Ny}x{self.config.grid.Nz} grid points")
+
+        # Check if array fits in domain
+        if array_size_x > self.config.grid.Nx or array_size_y > self.config.grid.Ny:
+            raise ValueError(
+                f"Transducer array (size {array_size_x}x{array_size_y} grid points) is too large for the domain "
+                f"(size {self.config.grid.Nx}x{self.config.grid.Ny} grid points). "
+                f"With {self.config.acoustic.num_elements_x}x{self.config.acoustic.num_elements_y} elements at "
+                f"{element_spacing_x}x{element_spacing_y} spacing, the array needs at least "
+                f"{array_size_x}x{array_size_y} grid points. "
+                f"Increase domain lateral dimensions (Lx={self.config.grid.Lx*100:.2f}cm, Ly={self.config.grid.Ly*100:.2f}cm) "
+                f"or reduce number of elements."
+            )
+
+        # Center the array in the domain
+        x_start = int((self.config.grid.Nx - array_size_x) / 2)
+        y_start = int((self.config.grid.Ny - array_size_y) / 2)
+
+        print(f"Array start position: ({x_start}, {y_start})")
+        print(f"Array end position: ({x_start + array_size_x - 1}, {y_start + array_size_y - 1})")
 
         source_mask = np.zeros(self.kgrid.k.shape)
-        source_mask[
-            x_start : x_start + int(source_x_size),
-            y_start : y_start + int(source_y_size),
-            self.config.acoustic.source_z_pos,
-        ] = 1
+
+        # Place each element at its grid position
+        num_elements_placed = 0
+        for i in range(self.config.acoustic.num_elements_x):
+            for j in range(self.config.acoustic.num_elements_y):
+                x_pos = x_start + i * element_spacing_x
+                y_pos = y_start + j * element_spacing_y
+                # Ensure we're within bounds
+                if 0 <= x_pos < self.config.grid.Nx and 0 <= y_pos < self.config.grid.Ny:
+                    source_mask[x_pos, y_pos, self.config.acoustic.source_z_pos] = 1
+                    num_elements_placed += 1
+                else:
+                    print(f"Warning: Element at ({x_pos}, {y_pos}) is out of bounds!")
+
+        # Verify the number of source points matches the number of signals
+        expected_elements = self.config.acoustic.num_elements_x * self.config.acoustic.num_elements_y
+        if num_elements_placed != expected_elements:
+            raise ValueError(
+                f"Source mask has {num_elements_placed} elements but {expected_elements} signals were created. "
+                f"Some elements were out of bounds."
+            )
 
         # Create source with signals
         self.source = kSource()
