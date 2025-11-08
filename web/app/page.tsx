@@ -100,10 +100,13 @@ export default function Home() {
     <div className="min-h-screen py-12 px-4">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <div>
+        <div className="space-y-2">
           <h1 className="text-3xl font-semibold text-neutral-900 tracking-tight">
             Ultrasound Heating Simulation
           </h1>
+          <p className="text-sm text-neutral-600">
+            Simulate temperature rise from ultrasound
+          </p>
         </div>
 
         {/* Main Content */}

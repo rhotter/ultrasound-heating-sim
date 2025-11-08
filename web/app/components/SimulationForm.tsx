@@ -191,13 +191,6 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
               setDurationMin(val);
             }}
             help="Total simulation time"
-            disabled={isRunning || params.steady_state}
-          />
-          <CheckboxField
-            label="Steady State"
-            checked={params.steady_state}
-            onChange={(v) => handleChange('steady_state', v)}
-            help="Use steady-state solver"
             disabled={isRunning}
           />
         </div>
@@ -330,7 +323,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
       </div>
 
       {/* Submit Button */}
-      <div className="pt-2">
+      <div className="pt-2 space-y-2">
         <button
           type="submit"
           disabled={isRunning}
@@ -338,6 +331,9 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
         >
           {isRunning ? 'Running...' : 'Run Simulation'}
         </button>
+        <p className="text-xs text-neutral-500">
+          Typical simulation time: 1-3 minutes
+        </p>
       </div>
     </form>
   );
