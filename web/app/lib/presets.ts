@@ -16,5 +16,8 @@ export const defaultParams: SimulationParams = {
   thermal_dt: 0.01,
   thermal_t_end: 60,  // 1 minute default
   steady_state: false,
+  skull_thickness: 0.007,  // 7 mm default
+  skull_absorption_db_cm: 9.476,  // 9.476 dB/cm (= 109.1 Np/m)
+  pitch: 208e-6,  // 208 µm default
   skip_videos: true,  // Default: skip videos (off)
 };

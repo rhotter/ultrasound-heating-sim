@@ -82,6 +82,11 @@ def run_simulation(
     thermal_dt: float = 0.01,
     thermal_t_end: float = 1000.0,
     steady_state: bool = False,
+    # Tissue parameters
+    skull_thickness: float = 0.007,  # 7 mm
+    skull_absorption_db_cm: float = 9.476,  # [dB/cm] (= 109.1 Np/m)
+    # Transducer parameters
+    pitch: float = 208e-6,  # 208 µm
     # Options
     skip_videos: bool = True,
 ) -> dict:
@@ -112,6 +117,7 @@ def run_simulation(
         GridConfig,
         AcousticConfig,
         ThermalConfig,
+        TissueProperties,
     )
     from src.acoustic.runner import run_acoustic_simulation
     from src.heat.runner import run_heat_simulation
@@ -120,12 +126,68 @@ def run_simulation(
     if torch.cuda.is_available():
         print(f"GPU device: {torch.cuda.get_device_name(0)}")
 
-    # Build configuration (using default tissue properties from config.py)
+    print(f"Using skull thickness: {skull_thickness * 1000:.2f} mm")
+    print(f"Using skull absorption: {skull_absorption_db_cm:.2f} dB/cm")
+    print(f"Using transducer pitch: {pitch * 1e6:.1f} µm")
+
+    # Convert skull absorption from dB/cm to Np/m
+    # 1 Np = 8.686 dB, and we need to convert cm to m
+    skull_absorption_np_m = (skull_absorption_db_cm / 8.686) * 100
+    print(f"Skull absorption converted: {skull_absorption_np_m:.2f} Np/m")
+
+    # Build tissue layers with custom skull thickness
+    tissue_layers = [
+        TissueProperties(
+            name="gel",
+            sound_speed=1624,  # [m/s]
+            density=1000,  # [kg/m^3]
+            absorption_coefficient=0,  # [Np/m] at 2 MHz
+            specific_heat=3630,  # [J/(kg·K)]
+            thermal_conductivity=0,  # [W/(m·K)] Insulating boundary condition (worst case)
+            thickness=4e-3,  # 4 mm
+            heat_transfer_rate=0,  # [ml/min/kg]
+        ),
+        TissueProperties(
+            name="skin",
+            sound_speed=1624,  # [m/s]
+            density=1109,  # [kg/m^3]
+            thickness=2e-3,  # 2 mm
+            absorption_coefficient=42.3,  # [Np/m] at 2 MHz
+            specific_heat=3391,  # [J/(kg·K)]
+            thermal_conductivity=0.37,  # [W/(m·K)]
+            heat_transfer_rate=106,  # [ml/min/kg]
+        ),
+        TissueProperties(
+            name="skull",
+            sound_speed=2770,  # [m/s]
+            density=1908,  # [kg/m^3]
+            thickness=skull_thickness,  # User-specified thickness
+            absorption_coefficient=skull_absorption_np_m,  # User-specified absorption [Np/m]
+            specific_heat=1313,  # [J/(kg·K)]
+            thermal_conductivity=0.32,  # [W/(m·K)]
+            heat_transfer_rate=10,  # [ml/min/kg]
+        ),
+        TissueProperties(
+            name="brain",
+            sound_speed=1546,  # [m/s]
+            density=1046,  # [kg/m^3]
+            absorption_coefficient=16.75,  # [Np/m] at 2 MHz
+            specific_heat=3630,  # [J/(kg·K)]
+            thermal_conductivity=0.51,  # [W/(m·K)]
+            heat_transfer_rate=559,  # [ml/min/kg]
+        ),
+    ]
+
+    # Build configuration with custom tissue layers
     config = SimulationConfig(
+        tissue_layers=tissue_layers,
         grid=GridConfig(
             Lx=Lx,
             Ly=Ly,
             Lz=Lz,
+            dx=pitch,  # Grid spacing matches transducer pitch
+            dy=pitch,
+            dz=pitch,
             pml_size=pml_size,
         ),
         acoustic=AcousticConfig(
@@ -135,13 +197,13 @@ def run_simulation(
             num_elements_y=num_elements_y,
             source_magnitude=source_magnitude,
             pulse_repetition_freq=pulse_repetition_freq,
+            pitch=pitch,  # Transducer pitch
             enable_azimuthal_focusing=enable_azimuthal_focusing,
         ),
         thermal=ThermalConfig(
             dt=thermal_dt,
             t_end=thermal_t_end,
         ),
-        # tissue_layers uses default from SimulationConfig
     )
 
     # Run acoustic simulation
@@ -394,6 +456,10 @@ def fastapi_app():
         thermal_dt: float = 0.01
         thermal_t_end: float = 1000.0
         steady_state: bool = False
+        skull_thickness: float = 0.007  # 7 mm
+        skull_absorption_db_cm: float = 9.476  # [dB/cm] (= 109.1 Np/m)
+        pitch: float = 208e-6  # 208 µm
+        skip_videos: bool = True
 
     @web_app.post("/api/simulate")
     async def simulate(params: SimulationParams):

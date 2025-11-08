@@ -8,18 +8,25 @@ export interface SimulationParams {
   // Acoustic parameters
   freq: number;
   num_cycles: number;
-  num_elements_x: number;
-  num_elements_y: number;
   source_magnitude: number;
   pulse_repetition_freq: number;
   focus_depth: number | null;
   enable_azimuthal_focusing: boolean;
-
+  
   // Thermal parameters
   thermal_dt: number;
   thermal_t_end: number;
   steady_state: boolean;
-
+  
+  // Tissue parameters
+  skull_thickness: number;  // [m]
+  skull_absorption_db_cm: number;  // [dB/cm]
+  
+  // Transducer parameters
+  pitch: number;  // [m] - also sets dx/dy/dz grid spacing
+  num_elements_x: number;
+  num_elements_y: number;
+  
   // Options
   skip_videos: boolean;
 }

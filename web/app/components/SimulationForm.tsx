@@ -21,6 +21,9 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
   const [LzCm, setLzCm] = useState(parseFloat((defaultParams.Lz * 100).toFixed(2)));
   const [focusDepthCm, setFocusDepthCm] = useState(defaultParams.focus_depth ? parseFloat((defaultParams.focus_depth * 100).toFixed(2)) : 0);
   const [durationMin, setDurationMin] = useState(defaultParams.thermal_t_end / 60);
+  const [skullThicknessMm, setSkullThicknessMm] = useState(parseFloat((defaultParams.skull_thickness * 1000).toFixed(2)));
+  const [skullAbsorptionDbCm, setSkullAbsorptionDbCm] = useState(defaultParams.skull_absorption_db_cm);
+  const [pitchUm, setPitchUm] = useState(parseFloat((defaultParams.pitch * 1e6).toFixed(1)));
 
   const handleChange = (field: keyof SimulationParams, value: any) => {
     setParams(prev => ({ ...prev, [field]: value }));
@@ -38,6 +41,9 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
       Lz: LzCm / 100,
       focus_depth: focusDepthCm === 0 ? 0 : focusDepthCm / 100,
       thermal_t_end: durationMin * 60,
+      skull_thickness: skullThicknessMm / 1000,
+      skull_absorption_db_cm: skullAbsorptionDbCm,
+      pitch: pitchUm / 1e6,
     };
     onSubmit(submissionParams);
   };
@@ -51,6 +57,9 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
     setLzCm(parseFloat((defaultParams.Lz * 100).toFixed(2)));
     setFocusDepthCm(defaultParams.focus_depth ? parseFloat((defaultParams.focus_depth * 100).toFixed(2)) : 0);
     setDurationMin(defaultParams.thermal_t_end / 60);
+    setSkullThicknessMm(parseFloat((defaultParams.skull_thickness * 1000).toFixed(2)));
+    setSkullAbsorptionDbCm(defaultParams.skull_absorption_db_cm);
+    setPitchUm(parseFloat((defaultParams.pitch * 1e6).toFixed(1)));
   };
 
   return (
@@ -65,7 +74,6 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
             label="Frequency (MHz)"
             value={freqMHz}
             onChange={(v) => setFreqMHz(typeof v === 'number' ? v : parseFloat(v))}
-            step={0.1}
             help="Ultrasound frequency"
             disabled={isRunning}
           />
@@ -81,7 +89,6 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
             label="Source Pressure (MPa)"
             value={pressureMPa}
             onChange={(v) => setPressureMPa(typeof v === 'number' ? v : parseFloat(v))}
-            step={0.1}
             help="Source pressure"
             disabled={isRunning}
           />
@@ -132,12 +139,41 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
             }}
             step={0.1}
             help="Depth of focal point"
-            placeholder="1.5"
             disabled={isRunning || params.focus_depth === 0}
           />
         </div>
         <div className="text-xs text-neutral-500 mt-2">
           Duty Cycle: {((params.num_cycles / freqMHz / 1e6) * params.pulse_repetition_freq * 100).toFixed(2)}%
+        </div>
+      </div>
+
+      {/* Tissue Parameters */}
+      <div className="space-y-5">
+        <h2 className="text-base font-semibold text-neutral-900">
+          Tissue Parameters
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <FormField
+            label="Skull Thickness (mm)"
+            value={skullThicknessMm}
+            onChange={(v) => {
+              const val = typeof v === 'number' ? v : parseFloat(v);
+              setSkullThicknessMm(val);
+            }}
+            min={0}
+            help="Thickness of skull layer"
+            disabled={isRunning}
+          />
+          <FormField
+            label="Skull Absorption (dB/cm)"
+            value={skullAbsorptionDbCm}
+            onChange={(v) => {
+              const val = typeof v === 'number' ? v : parseFloat(v);
+              setSkullAbsorptionDbCm(val);
+            }}
+            help="Acoustic absorption coefficient (0 = no absorption)"
+            disabled={isRunning}
+          />
         </div>
       </div>
 
@@ -154,8 +190,6 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
               const val = typeof v === 'number' ? v : parseFloat(v);
               setDurationMin(val);
             }}
-            min={0.1}
-            step={0.1}
             help="Total simulation time"
             disabled={isRunning || params.steady_state}
           />
@@ -183,67 +217,88 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
           Advanced Settings
         </button>
         {showAdvanced && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FormField
-              label="Thermal Time Step (s)"
-              value={params.thermal_dt}
-              onChange={(v) => handleChange('thermal_dt', v)}
-              min={0.001}
-              step={0.001}
-              help="Thermal solver time step"
-              disabled={isRunning}
-            />
-            <FormField
-              label="Transducer Elements X"
-              value={params.num_elements_x}
-              onChange={(v) => handleChange('num_elements_x', v)}
-              min={1}
-              help="Transducer elements in X (azimuthal)"
-              disabled={isRunning}
-            />
-            <FormField
-              label="Transducer Elements Y"
-              value={params.num_elements_y}
-              onChange={(v) => handleChange('num_elements_y', v)}
-              min={1}
-              help="Transducer elements in Y (elevational)"
-              disabled={isRunning}
-            />
-            <FormField
-              label="Domain Lateral X (cm)"
-              value={LxCm}
-              onChange={(v) => setLxCm(typeof v === 'number' ? v : parseFloat(v))}
-              min={0.5}
-              step={0.1}
-              help="Domain width in X (azimuthal)"
-              disabled={isRunning}
-            />
-            <FormField
-              label="Domain Lateral Y (cm)"
-              value={LyCm}
-              onChange={(v) => setLyCm(typeof v === 'number' ? v : parseFloat(v))}
-              min={0.5}
-              step={0.1}
-              help="Domain width in Y (elevational)"
-              disabled={isRunning}
-            />
-            <FormField
-              label="Domain Depth Z (cm)"
-              value={LzCm}
-              onChange={(v) => setLzCm(typeof v === 'number' ? v : parseFloat(v))}
-              min={1.5}
-              step={0.1}
-              help="Domain depth (must fit all tissue layers + brain)"
-              disabled={isRunning}
-            />
-            <FormField
-              label="Acoustic PML Boundary Size"
-              value={params.pml_size}
-              onChange={(v) => handleChange('pml_size', v)}
-              min={5}
-              help="Perfectly Matched Layer size"
-              disabled={isRunning}
-            />
+          <div className="space-y-6">
+            {/* Transducer Settings */}
+            <div>
+              <h3 className="text-sm font-semibold text-neutral-700 mb-3">Transducer</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField
+                  label="Transducer Elements X"
+                  value={params.num_elements_x}
+                  onChange={(v) => handleChange('num_elements_x', v)}
+                  min={1}
+                  help="Transducer elements in X (azimuthal)"
+                  disabled={isRunning}
+                />
+                <FormField
+                  label="Transducer Elements Y"
+                  value={params.num_elements_y}
+                  onChange={(v) => handleChange('num_elements_y', v)}
+                  min={1}
+                  help="Transducer elements in Y (elevational)"
+                  disabled={isRunning}
+                />
+                <FormField
+                  label="Element Pitch (µm)"
+                  value={pitchUm}
+                  onChange={(v) => {
+                    const val = typeof v === 'number' ? v : parseFloat(v);
+                    setPitchUm(val);
+                  }}
+                  help="Transducer element spacing"
+                  disabled={isRunning}
+                />
+              </div>
+            </div>
+
+            {/* Domain Settings */}
+            <div>
+              <h3 className="text-sm font-semibold text-neutral-700 mb-3">Computational Domain</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField
+                  label="Domain Lateral X (cm)"
+                  value={LxCm}
+                  onChange={(v) => setLxCm(typeof v === 'number' ? v : parseFloat(v))}
+                  help="Domain width in X (azimuthal)"
+                  disabled={isRunning}
+                />
+                <FormField
+                  label="Domain Lateral Y (cm)"
+                  value={LyCm}
+                  onChange={(v) => setLyCm(typeof v === 'number' ? v : parseFloat(v))}
+                  help="Domain width in Y (elevational)"
+                  disabled={isRunning}
+                />
+                <FormField
+                  label="Domain Depth Z (cm)"
+                  value={LzCm}
+                  onChange={(v) => setLzCm(typeof v === 'number' ? v : parseFloat(v))}
+                  help="Domain depth (must fit all tissue layers + brain)"
+                  disabled={isRunning}
+                />
+                <FormField
+                  label="PML Boundary Size"
+                  value={params.pml_size}
+                  onChange={(v) => handleChange('pml_size', v)}
+                  help="Perfectly Matched Layer size"
+                  disabled={isRunning}
+                />
+              </div>
+            </div>
+
+            {/* Solver Settings */}
+            <div>
+              <h3 className="text-sm font-semibold text-neutral-700 mb-3">Solver</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField
+                  label="Thermal Time Step (s)"
+                  value={params.thermal_dt}
+                  onChange={(v) => handleChange('thermal_dt', v)}
+                  help="Thermal solver time step"
+                  disabled={isRunning}
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>
