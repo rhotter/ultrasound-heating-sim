@@ -32,10 +32,11 @@ export default function Home() {
         setTimeSeries(results.time_series);
         setHasTemperature(results.has_temperature || false);
       } else if (results.status === 'error') {
-        console.log('[checkResults] Simulation error:', results.metadata?.message);
+        const errorMsg = results.metadata && 'message' in results.metadata
+          ? results.metadata.message
+          : 'Simulation failed';
+        console.log('[checkResults] Simulation error:', errorMsg);
         setStatus('error');
-        // Extract error message from metadata if available
-        const errorMsg = results.metadata?.message || 'Simulation failed';
         setError(errorMsg);
       } else {
         console.log('[checkResults] Still running...');
