@@ -10,9 +10,10 @@ interface ResultsDisplayProps {
   error: string | null;
   hasTemperatureData: boolean;
   elapsedTime: number;
+  completionTime: number | null;
 }
 
-export default function ResultsDisplay({ status, jobId, metadata, error, hasTemperatureData, elapsedTime }: ResultsDisplayProps) {
+export default function ResultsDisplay({ status, jobId, metadata, error, hasTemperatureData, elapsedTime, completionTime }: ResultsDisplayProps) {
   if (status === 'idle') {
     return null;
   }
@@ -50,7 +51,9 @@ export default function ResultsDisplay({ status, jobId, metadata, error, hasTemp
 
       {status === 'completed' && metadata && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <p className="text-green-900 font-medium text-sm">Simulation completed successfully</p>
+          <p className="text-green-900 font-medium text-sm">
+            Simulation completed successfully{completionTime !== null && ` in ${formatTime(completionTime)}`}
+          </p>
         </div>
       )}
     </div>

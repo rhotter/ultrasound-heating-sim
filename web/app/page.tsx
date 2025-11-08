@@ -16,6 +16,7 @@ export default function Home() {
   const [timeSeries, setTimeSeries] = useState<any>(null);
   const [hasTemperature, setHasTemperature] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [completionTime, setCompletionTime] = useState<number | null>(null);
 
   const checkResults = useCallback(async () => {
     if (!jobId) return;
@@ -32,6 +33,7 @@ export default function Home() {
         setVisualizations(results.visualizations);
         setTimeSeries(results.time_series);
         setHasTemperature(results.has_temperature || false);
+        setCompletionTime(elapsedTime);
       } else if (results.status === 'error') {
         const errorMsg = results.metadata && 'message' in results.metadata
           ? results.metadata.message
@@ -79,6 +81,7 @@ export default function Home() {
     setTimeSeries(null);
     setHasTemperature(false);
     setElapsedTime(0);
+    setCompletionTime(null);
 
     try {
       const response = await startSimulation(params);
@@ -111,6 +114,7 @@ export default function Home() {
               error={error}
               hasTemperatureData={hasTemperature}
               elapsedTime={elapsedTime}
+              completionTime={completionTime}
             />
           </div>
         </div>
