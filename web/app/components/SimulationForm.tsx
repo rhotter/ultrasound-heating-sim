@@ -51,13 +51,13 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} className="space-y-10">
       {/* Acoustic Parameters */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="space-y-5">
+        <h2 className="text-base font-semibold text-neutral-900">
           Acoustic Parameters
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <FormField
             label="Frequency (MHz)"
             value={freqMHz}
@@ -136,20 +136,11 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
       </div>
 
       {/* Thermal Parameters */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="space-y-5">
+        <h2 className="text-base font-semibold text-neutral-900">
           Thermal Parameters
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <FormField
-            label="Time Step (s)"
-            value={params.thermal_dt}
-            onChange={(v) => handleChange('thermal_dt', v)}
-            min={0.001}
-            step={0.001}
-            help="Thermal solver time step"
-            disabled={isRunning}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <FormField
             label="Duration (s)"
             value={params.thermal_t_end}
@@ -170,11 +161,11 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
       </div>
 
       {/* Advanced Settings */}
-      <div>
+      <div className="space-y-5">
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-sm font-medium text-primary-600 hover:text-primary-700 flex items-center gap-2"
+          className="text-sm font-medium text-neutral-600 hover:text-neutral-900 flex items-center gap-2 transition-colors"
           disabled={isRunning}
         >
           <svg className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,7 +174,16 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
           Advanced Settings
         </button>
         {showAdvanced && (
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <FormField
+              label="Thermal Time Step (s)"
+              value={params.thermal_dt}
+              onChange={(v) => handleChange('thermal_dt', v)}
+              min={0.001}
+              step={0.001}
+              help="Thermal solver time step"
+              disabled={isRunning}
+            />
             <FormField
               label="Transducer Elements X"
               value={params.num_elements_x}
@@ -228,7 +228,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
               disabled={isRunning}
             />
             <FormField
-              label="PML Boundary Size"
+              label="Acoustic PML Boundary Size"
               value={params.pml_size}
               onChange={(v) => handleChange('pml_size', v)}
               min={5}
@@ -240,21 +240,13 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
       </div>
 
       {/* Submit Button */}
-      <div className="flex gap-3 mt-6">
+      <div className="pt-2">
         <button
           type="submit"
           disabled={isRunning}
-          className="px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+          className="px-5 py-2.5 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm disabled:shadow-none"
         >
           {isRunning ? 'Running...' : 'Run Simulation'}
-        </button>
-        <button
-          type="button"
-          onClick={resetForm}
-          disabled={isRunning}
-          className="px-6 py-3 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          Reset
         </button>
       </div>
     </form>
@@ -276,7 +268,7 @@ interface FormFieldProps {
 function FormField({ label, value, onChange, min, max, step, help, placeholder, disabled }: FormFieldProps) {
   return (
     <div className="flex flex-col">
-      <label className="font-medium text-gray-700 mb-2 text-sm">{label}</label>
+      <label className="font-medium text-neutral-700 mb-2 text-sm">{label}</label>
       <input
         type="number"
         value={value}
@@ -286,7 +278,7 @@ function FormField({ label, value, onChange, min, max, step, help, placeholder, 
         step={step}
         placeholder={placeholder}
         disabled={disabled}
-        className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+        className="px-3 py-2 border border-neutral-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900 disabled:bg-neutral-50 disabled:cursor-not-allowed text-sm transition-all"
       />
     </div>
   );
@@ -310,9 +302,9 @@ function CheckboxField({ label, checked, onChange, help, disabled }: CheckboxFie
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
-        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 disabled:cursor-not-allowed"
+        className="w-4 h-4 text-neutral-900 border-neutral-300 rounded focus:ring-neutral-900 disabled:cursor-not-allowed"
       />
-      <label htmlFor={id} className="font-medium text-gray-700 text-sm cursor-pointer">{label}</label>
+      <label htmlFor={id} className="font-medium text-neutral-700 text-sm cursor-pointer">{label}</label>
     </div>
   );
 }
@@ -329,12 +321,12 @@ interface SelectFieldProps {
 function SelectField({ label, value, onChange, options, help, disabled }: SelectFieldProps) {
   return (
     <div className="flex flex-col">
-      <label className="font-medium text-gray-700 mb-2 text-sm">{label}</label>
+      <label className="font-medium text-neutral-700 mb-2 text-sm">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+        className="px-3 py-2 border border-neutral-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900 disabled:bg-neutral-50 disabled:cursor-not-allowed text-sm transition-all"
       >
         {options.map(option => (
           <option key={option.value} value={option.value}>

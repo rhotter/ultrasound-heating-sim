@@ -75,37 +75,43 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen py-12 px-4">
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-6">
-          <h1 className="text-3xl font-semibold text-gray-900">Ultrasound Heating Simulation</h1>
+        <div>
+          <h1 className="text-3xl font-semibold text-neutral-900 tracking-tight">
+            Ultrasound Heating Simulation
+          </h1>
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-6">
-          <SimulationForm onSubmit={handleSubmit} isRunning={status === 'running'} />
+        <div className="card">
+          <div className="card-body space-y-8">
+            <SimulationForm onSubmit={handleSubmit} isRunning={status === 'running'} />
 
-          <ResultsDisplay
-            status={status}
-            jobId={jobId}
-            metadata={metadata}
-            error={error}
-            hasTemperatureData={hasTemperature}
-          />
-
-          {/* Visualizations */}
-          {status === 'completed' && visualizations && (
-            <div className="mt-8">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-6">Visualizations</h2>
-              <VisualizationPanel
-                visualizations={visualizations}
-                timeSeries={timeSeries}
-                hasTemperature={hasTemperature}
-              />
-            </div>
-          )}
+            <ResultsDisplay
+              status={status}
+              jobId={jobId}
+              metadata={metadata}
+              error={error}
+              hasTemperatureData={hasTemperature}
+            />
+          </div>
         </div>
+
+        {/* Visualizations */}
+        {status === 'completed' && visualizations && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold text-neutral-900 tracking-tight">
+              Visualizations
+            </h2>
+            <VisualizationPanel
+              visualizations={visualizations}
+              timeSeries={timeSeries}
+              hasTemperature={hasTemperature}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

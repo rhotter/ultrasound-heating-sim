@@ -33,10 +33,11 @@ export default function VisualizationPanel({ visualizations, timeSeries, hasTemp
     <div className="space-y-6">
       {/* Temperature over time chart */}
       {hasTemperature && timeSeries && (
-        <div className="bg-white p-6 border border-gray-200 rounded-lg">
-          <h3 className="text-base font-semibold text-gray-900 mb-4">
-            Temperature Evolution Over Time
-          </h3>
+        <div className="card">
+          <div className="card-body">
+            <h3 className="text-base font-semibold text-neutral-900 mb-6">
+              Temperature Evolution Over Time
+            </h3>
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -70,90 +71,103 @@ export default function VisualizationPanel({ visualizations, timeSeries, hasTemp
               />
             </LineChart>
           </ResponsiveContainer>
+          </div>
         </div>
       )}
 
       {/* Videos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {visualizations.pressure_video && (
-          <div className="bg-white p-4 border border-gray-200 rounded-lg">
-            <h3 className="text-base font-semibold text-gray-900 mb-3">
-              Acoustic Pressure Wave Propagation
-            </h3>
-            <video
-              controls
-              loop
-              className="w-full rounded"
-              src={`data:video/mp4;base64,${visualizations.pressure_video}`}
-            >
-              Your browser does not support the video tag.
-            </video>
+          <div className="card">
+            <div className="card-body">
+              <h3 className="text-base font-semibold text-neutral-900 mb-4">
+                Acoustic Pressure Wave Propagation
+              </h3>
+              <video
+                controls
+                loop
+                className="w-full rounded-lg"
+                src={`data:video/mp4;base64,${visualizations.pressure_video}`}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
           </div>
         )}
 
         {visualizations.temperature_video && (
-          <div className="bg-white p-4 border border-gray-200 rounded-lg">
-            <h3 className="text-base font-semibold text-gray-900 mb-3">
-              Temperature Evolution
-            </h3>
-            <video
-              controls
-              loop
-              className="w-full rounded"
-              src={`data:video/mp4;base64,${visualizations.temperature_video}`}
-            >
-              Your browser does not support the video tag.
-            </video>
+          <div className="card">
+            <div className="card-body">
+              <h3 className="text-base font-semibold text-neutral-900 mb-4">
+                Temperature Evolution
+              </h3>
+              <video
+                controls
+                loop
+                className="w-full rounded-lg"
+                src={`data:video/mp4;base64,${visualizations.temperature_video}`}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
           </div>
         )}
       </div>
 
       {/* Slice images */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {visualizations.pressure && (
-          <div className="bg-white p-4 border border-gray-200 rounded-lg">
-            <img
-              src={`data:image/png;base64,${visualizations.pressure}`}
-              alt="Max Pressure"
-              className="w-full rounded"
-            />
+          <div className="card">
+            <div className="card-body">
+              <img
+                src={`data:image/png;base64,${visualizations.pressure}`}
+                alt="Max Pressure"
+                className="w-full rounded-lg"
+              />
+            </div>
           </div>
         )}
 
         {visualizations.intensity && (
-          <div className="bg-white p-4 border border-gray-200 rounded-lg">
-            <img
-              src={`data:image/png;base64,${visualizations.intensity}`}
-              alt="Acoustic Intensity"
-              className="w-full rounded"
-            />
+          <div className="card">
+            <div className="card-body">
+              <img
+                src={`data:image/png;base64,${visualizations.intensity}`}
+                alt="Acoustic Intensity"
+                className="w-full rounded-lg"
+              />
+            </div>
           </div>
         )}
 
         {visualizations.medium && (
-          <div className="bg-white p-4 border border-gray-200 rounded-lg">
-            <img
-              src={`data:image/png;base64,${visualizations.medium}`}
-              alt="Medium Properties"
-              className="w-full rounded"
-            />
+          <div className="card">
+            <div className="card-body">
+              <img
+                src={`data:image/png;base64,${visualizations.medium}`}
+                alt="Medium Properties"
+                className="w-full rounded-lg"
+              />
+            </div>
           </div>
         )}
 
         {visualizations.temperature && (
-          <div className="bg-white p-4 border border-gray-200 rounded-lg">
-            <img
-              src={`data:image/png;base64,${visualizations.temperature}`}
-              alt="Temperature"
-              className="w-full rounded"
-            />
+          <div className="card">
+            <div className="card-body">
+              <img
+                src={`data:image/png;base64,${visualizations.temperature}`}
+                alt="Temperature"
+                className="w-full rounded-lg"
+              />
+            </div>
           </div>
         )}
       </div>
 
       {!hasTemperature && !timeSeries && (
-        <div className="bg-gray-50 p-4 border border-gray-200 rounded-lg">
-          <p className="text-gray-700 text-sm">
+        <div className="bg-neutral-50 p-4 border border-neutral-200 rounded-xl">
+          <p className="text-neutral-700 text-sm">
             Time series data not available (steady-state simulation or acoustic only)
           </p>
         </div>

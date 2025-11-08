@@ -20,34 +20,34 @@ export default function ResultsDisplay({ status, jobId, metadata, error, hasTemp
     <div className="mt-6">
       {/* Status Display */}
       {status === 'running' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
-            <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
+            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
             <div>
-              <p className="text-gray-900 font-medium">Simulation in progress...</p>
-              {jobId && <p className="text-gray-500 text-xs font-mono mt-1">Job ID: {jobId}</p>}
+              <p className="text-neutral-900 font-medium text-sm">Simulation in progress...</p>
+              {jobId && <p className="text-neutral-500 text-xs font-mono mt-1">Job ID: {jobId}</p>}
             </div>
           </div>
         </div>
       )}
 
       {status === 'error' && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-          <p className="text-red-900 font-medium">Error</p>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-900 font-medium text-sm">Error</p>
           <p className="text-red-700 text-sm mt-1">{error}</p>
         </div>
       )}
 
       {status === 'completed' && metadata && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-          <p className="text-green-900 font-medium">Simulation completed successfully!</p>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <p className="text-green-900 font-medium text-sm">Simulation completed successfully</p>
         </div>
       )}
 
       {/* Results */}
       {status === 'completed' && metadata && 'max_intensity_W_m2' in metadata && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Simulation Results</h3>
+        <div className="mt-6 bg-white border border-neutral-200 rounded-xl p-6">
+          <h3 className="text-base font-semibold text-neutral-900 mb-4">Simulation Results</h3>
 
           <div className="space-y-3">
             {metadata.max_temp_rise_skull_C !== undefined && (
@@ -71,9 +71,9 @@ export default function ResultsDisplay({ status, jobId, metadata, error, hasTemp
 
 function MetricRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-      <span className="font-medium text-gray-700 text-sm">{label}</span>
-      <span className="text-gray-900 font-semibold font-mono text-sm">{value}</span>
+    <div className="flex justify-between items-center p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+      <span className="font-medium text-neutral-700 text-sm">{label}</span>
+      <span className="text-neutral-900 font-semibold font-mono text-sm">{value}</span>
     </div>
   );
 }
