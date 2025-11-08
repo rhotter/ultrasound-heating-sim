@@ -192,6 +192,14 @@ def run_simulation(
     visualizations["intensity"] = base64.b64encode(buf.read()).decode("utf-8")
     plt.close()
 
+    # Medium properties visualization
+    fig, ax = plot_medium_properties(medium_sound_speed, config, focus_depth=focus_depth)
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+    buf.seek(0)
+    visualizations["medium"] = base64.b64encode(buf.read()).decode("utf-8")
+    plt.close()
+
     max_intensity = float(np.max(intensity_array))
     mean_intensity = float(np.mean(intensity_array))
     max_pressure = float(np.max(max_pressure_array))

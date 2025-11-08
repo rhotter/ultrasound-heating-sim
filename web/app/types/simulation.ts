@@ -47,6 +47,7 @@ export interface ResultsResponse {
   visualizations?: {
     pressure?: string;
     intensity?: string;
+    medium?: string;
     temperature?: string;
   };
   time_series?: {

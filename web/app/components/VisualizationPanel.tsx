@@ -6,6 +6,7 @@ interface VisualizationPanelProps {
   visualizations: {
     pressure?: string;
     intensity?: string;
+    medium?: string;
     temperature?: string;
   };
   timeSeries: {
@@ -39,7 +40,7 @@ export default function VisualizationPanel({ visualizations, timeSeries, hasTemp
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="time"
-                label={{ value: 'Time Step', position: 'insideBottom', offset: -5 }}
+                label={{ value: 'Time (s)', position: 'insideBottom', offset: -5 }}
                 stroke="#6b7280"
               />
               <YAxis
@@ -86,6 +87,16 @@ export default function VisualizationPanel({ visualizations, timeSeries, hasTemp
             <img
               src={`data:image/png;base64,${visualizations.intensity}`}
               alt="Acoustic Intensity"
+              className="w-full rounded"
+            />
+          </div>
+        )}
+
+        {visualizations.medium && (
+          <div className="bg-white p-4 border border-gray-200 rounded-lg">
+            <img
+              src={`data:image/png;base64,${visualizations.medium}`}
+              alt="Medium Properties"
               className="w-full rounded"
             />
           </div>
