@@ -45,6 +45,9 @@ export default function VisualizationPanel({ visualizations, timeSeries, hasTemp
                 dataKey="time"
                 label={{ value: 'Time (s)', position: 'insideBottom', offset: -5 }}
                 stroke="#6b7280"
+                type="number"
+                domain={['dataMin', 'dataMax']}
+                tickFormatter={(value) => value.toFixed(1)}
               />
               <YAxis
                 label={{ value: 'Temperature (°C)', angle: -90, position: 'insideLeft' }}
@@ -116,6 +119,18 @@ export default function VisualizationPanel({ visualizations, timeSeries, hasTemp
 
       {/* Slice images */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {visualizations.medium && (
+          <div className="card">
+            <div className="card-body">
+              <img
+                src={`data:image/png;base64,${visualizations.medium}`}
+                alt="Medium Properties"
+                className="w-full rounded-lg"
+              />
+            </div>
+          </div>
+        )}
+
         {visualizations.pressure && (
           <div className="card">
             <div className="card-body">
@@ -134,18 +149,6 @@ export default function VisualizationPanel({ visualizations, timeSeries, hasTemp
               <img
                 src={`data:image/png;base64,${visualizations.intensity}`}
                 alt="Acoustic Intensity"
-                className="w-full rounded-lg"
-              />
-            </div>
-          </div>
-        )}
-
-        {visualizations.medium && (
-          <div className="card">
-            <div className="card-body">
-              <img
-                src={`data:image/png;base64,${visualizations.medium}`}
-                alt="Medium Properties"
                 className="w-full rounded-lg"
               />
             </div>
