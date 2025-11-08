@@ -14,7 +14,7 @@ export const defaultParams: SimulationParams = {
   focus_depth: 0,
   enable_azimuthal_focusing: false,
   thermal_dt: 0.01,
-  thermal_t_end: 100,  // Shorter for faster testing
+  thermal_t_end: 60,  // 1 minute default
   steady_state: false,
-  acoustic_only: false,
+  skip_videos: true,  // Default: skip videos (off)
 };

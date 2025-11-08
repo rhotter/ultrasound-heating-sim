@@ -20,6 +20,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
   const [LyCm, setLyCm] = useState(parseFloat((defaultParams.Ly * 100).toFixed(2)));
   const [LzCm, setLzCm] = useState(parseFloat((defaultParams.Lz * 100).toFixed(2)));
   const [focusDepthCm, setFocusDepthCm] = useState(defaultParams.focus_depth ? parseFloat((defaultParams.focus_depth * 100).toFixed(2)) : 0);
+  const [durationMin, setDurationMin] = useState(defaultParams.thermal_t_end / 60);
 
   const handleChange = (field: keyof SimulationParams, value: any) => {
     setParams(prev => ({ ...prev, [field]: value }));
@@ -36,6 +37,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
       Ly: LyCm / 100,
       Lz: LzCm / 100,
       focus_depth: focusDepthCm === 0 ? 0 : focusDepthCm / 100,
+      thermal_t_end: durationMin * 60,
     };
     onSubmit(submissionParams);
   };
@@ -48,6 +50,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
     setLyCm(parseFloat((defaultParams.Ly * 100).toFixed(2)));
     setLzCm(parseFloat((defaultParams.Lz * 100).toFixed(2)));
     setFocusDepthCm(defaultParams.focus_depth ? parseFloat((defaultParams.focus_depth * 100).toFixed(2)) : 0);
+    setDurationMin(defaultParams.thermal_t_end / 60);
   };
 
   return (
@@ -61,7 +64,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
           <FormField
             label="Frequency (MHz)"
             value={freqMHz}
-            onChange={(v) => setFreqMHz(typeof v === 'number' ? v : parseFloat(v) || 0)}
+            onChange={(v) => setFreqMHz(typeof v === 'number' ? v : parseFloat(v))}
             step={0.1}
             help="Ultrasound frequency"
             disabled={isRunning}
@@ -77,7 +80,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
           <FormField
             label="Source Pressure (MPa)"
             value={pressureMPa}
-            onChange={(v) => setPressureMPa(typeof v === 'number' ? v : parseFloat(v) || 0)}
+            onChange={(v) => setPressureMPa(typeof v === 'number' ? v : parseFloat(v))}
             step={0.1}
             help="Source pressure"
             disabled={isRunning}
@@ -113,7 +116,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
               }
             }}
             options={[
-              { value: 'none', label: 'None (Plane Wave)' },
+              { value: 'none', label: 'None' },
               { value: 'elevational', label: 'Elevational (1D)' },
               { value: 'both', label: 'Elevational + Azimuthal (2D)' },
             ]}
@@ -133,6 +136,9 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
             disabled={isRunning || params.focus_depth === 0}
           />
         </div>
+        <div className="text-xs text-neutral-500 mt-2">
+          Duty Cycle: {((params.num_cycles / freqMHz / 1e6) * params.pulse_repetition_freq * 100).toFixed(2)}%
+        </div>
       </div>
 
       {/* Thermal Parameters */}
@@ -142,11 +148,14 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <FormField
-            label="Duration (s)"
-            value={params.thermal_t_end}
-            onChange={(v) => handleChange('thermal_t_end', v)}
-            min={10}
-            step={10}
+            label="Duration (min)"
+            value={durationMin}
+            onChange={(v) => {
+              const val = typeof v === 'number' ? v : parseFloat(v);
+              setDurationMin(val);
+            }}
+            min={0.1}
+            step={0.1}
             help="Total simulation time"
             disabled={isRunning || params.steady_state}
           />
@@ -203,7 +212,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
             <FormField
               label="Domain Lateral X (cm)"
               value={LxCm}
-              onChange={(v) => setLxCm(typeof v === 'number' ? v : parseFloat(v) || 0)}
+              onChange={(v) => setLxCm(typeof v === 'number' ? v : parseFloat(v))}
               min={0.5}
               step={0.1}
               help="Domain width in X (azimuthal)"
@@ -212,7 +221,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
             <FormField
               label="Domain Lateral Y (cm)"
               value={LyCm}
-              onChange={(v) => setLyCm(typeof v === 'number' ? v : parseFloat(v) || 0)}
+              onChange={(v) => setLyCm(typeof v === 'number' ? v : parseFloat(v))}
               min={0.5}
               step={0.1}
               help="Domain width in Y (elevational)"
@@ -221,7 +230,7 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
             <FormField
               label="Domain Depth Z (cm)"
               value={LzCm}
-              onChange={(v) => setLzCm(typeof v === 'number' ? v : parseFloat(v) || 0)}
+              onChange={(v) => setLzCm(typeof v === 'number' ? v : parseFloat(v))}
               min={1.5}
               step={0.1}
               help="Domain depth (must fit all tissue layers + brain)"
@@ -236,6 +245,26 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
               disabled={isRunning}
             />
           </div>
+        )}
+      </div>
+
+      {/* Generate Videos Option */}
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <input
+            id="generate-videos"
+            type="checkbox"
+            checked={!params.skip_videos}
+            onChange={(e) => handleChange('skip_videos', !e.target.checked)}
+            disabled={isRunning}
+            className="w-4 h-4 text-neutral-900 border-neutral-300 rounded focus:ring-neutral-900 disabled:cursor-not-allowed"
+          />
+          <label htmlFor="generate-videos" className="text-sm text-neutral-700 cursor-pointer">
+            Generate videos
+          </label>
+        </div>
+        {!params.skip_videos && (
+          <p className="text-xs text-amber-600 ml-6">Warning: significantly slower</p>
         )}
       </div>
 

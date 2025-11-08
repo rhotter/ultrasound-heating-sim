@@ -48,7 +48,7 @@ class AcousticConfigBrna2025(AcousticConfig):
     num_elements_x: int = 32  # 32×32 = 1024 elements
     num_elements_y: int = 32
     pitch: float = 250e-6  # 8 mm / 32 = 250 μm
-    source_magnitude: float = 0.6e6  # [Pa] 0.6 MPa peak pressure
+    source_magnitude: float = 0.2536e6  # [Pa]
 
     # Pulse train parameters
     # PRF = 1/PRI = 1/0.5ms = 2000 Hz
@@ -75,18 +75,23 @@ class ThermalConfigBrna2025(ThermalConfig):
 
     90-minute exposure with pulsed protocol:
     - Within pulse train: 50% duty cycle (already in acoustic PRF)
-    - Across pulse trains: 150 ms PTD / 10.15 s (PTD + ISI) ≈ 1.48% duty cycle
-    - Overall duty cycle: 0.5 × 0.0148 = 0.74%
+    - Across pulse trains: 150 ms PTD / 10 s ISI
+    - Pulsing is handled in the thermal solver (heat ON/OFF cycling)
     """
     # Time parameters
     dt: float = 0.01  # [s] 10 ms time step for long simulation
     t_end: float = 5400.0  # [s] 90 minutes
-    save_every: int = 50  # Save every 5 seconds (0.1s × 50)
+    save_every: int = 50  # Save every 0.5 seconds (0.01s × 50)
 
     # Tissue thermal properties (from paper)
     arterial_temperature: float = 37.0  # [°C]
     blood_density: float = 1000.0  # [kg/m³]
     blood_specific_heat: float = 3640.0  # [J/(kg·K)]
+
+    # Pulsing protocol parameters
+    enable_pulsing: bool = True  # Enable pulsed heating
+    pulse_duration: float = 0.150  # [s] 150 ms pulse train duration
+    isi_duration: float = 10.0  # [s] 10 s inter-stimulus interval
 
 
 def get_tissue_layers_brna2025():

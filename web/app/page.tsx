@@ -15,6 +15,7 @@ export default function Home() {
   const [visualizations, setVisualizations] = useState<any>(null);
   const [timeSeries, setTimeSeries] = useState<any>(null);
   const [hasTemperature, setHasTemperature] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   const checkResults = useCallback(async () => {
     if (!jobId) return;
@@ -57,6 +58,18 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [status, checkResults]);
 
+  // Timer for elapsed time
+  useEffect(() => {
+    if (status !== 'running') return;
+
+    const startTime = Date.now();
+    const timer = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [status]);
+
   const handleSubmit = async (params: SimulationParams) => {
     setStatus('running');
     setError(null);
@@ -65,6 +78,7 @@ export default function Home() {
     setVisualizations(null);
     setTimeSeries(null);
     setHasTemperature(false);
+    setElapsedTime(0);
 
     try {
       const response = await startSimulation(params);
@@ -96,16 +110,37 @@ export default function Home() {
               metadata={metadata}
               error={error}
               hasTemperatureData={hasTemperature}
+              elapsedTime={elapsedTime}
             />
           </div>
         </div>
 
-        {/* Visualizations */}
+        {/* Results */}
         {status === 'completed' && visualizations && (
           <div className="space-y-6">
             <h2 className="text-2xl font-semibold text-neutral-900 tracking-tight">
-              Visualizations
+              Results
             </h2>
+
+            {/* Temperature Results */}
+            {metadata && metadata.max_temp_rise_skull_C !== undefined && (
+              <div className="card">
+                <div className="card-body">
+                  <h3 className="text-base font-semibold text-neutral-900 mb-4">Maximum Temperature Rise</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-sm font-medium text-neutral-600 mb-2">Skull Region</p>
+                      <p className="text-3xl font-semibold text-neutral-900">{metadata.max_temp_rise_skull_C.toFixed(3)} °C</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-neutral-600 mb-2">Brain Region</p>
+                      <p className="text-3xl font-semibold text-neutral-900">{(metadata.max_temp_rise_brain_C ?? 0).toFixed(3)} °C</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <VisualizationPanel
               visualizations={visualizations}
               timeSeries={timeSeries}

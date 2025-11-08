@@ -21,7 +21,7 @@ export interface SimulationParams {
   steady_state: boolean;
 
   // Options
-  acoustic_only: boolean;
+  skip_videos: boolean;
 }
 
 export interface SimulationResponse {
@@ -36,6 +36,7 @@ export interface SimulationMetadata {
   max_pressure_Pa: number;
   grid_size: number[];
   frequency_Hz: number;
+  duty_cycle: number;
   max_temp_rise_skull_C?: number;
   max_temp_rise_brain_C?: number;
   steady_state?: boolean;

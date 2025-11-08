@@ -20,10 +20,10 @@ interface VisualizationPanelProps {
 }
 
 export default function VisualizationPanel({ visualizations, timeSeries, hasTemperature }: VisualizationPanelProps) {
-  // Prepare data for Recharts
+  // Prepare data for Recharts (convert time to minutes)
   const chartData = timeSeries
     ? timeSeries.time.map((t, i) => ({
-        time: t,
+        time: t / 60, // Convert seconds to minutes
         skull: timeSeries.skull[i],
         brain: timeSeries.brain[i],
       }))
@@ -43,7 +43,7 @@ export default function VisualizationPanel({ visualizations, timeSeries, hasTemp
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="time"
-                label={{ value: 'Time (s)', position: 'insideBottom', offset: -5 }}
+                label={{ value: 'Time (min)', position: 'insideBottom', offset: -5 }}
                 stroke="#6b7280"
                 type="number"
                 domain={['dataMin', 'dataMax']}
@@ -54,7 +54,10 @@ export default function VisualizationPanel({ visualizations, timeSeries, hasTemp
                 stroke="#6b7280"
                 domain={['auto', 'auto']}
               />
-              <Tooltip />
+              <Tooltip
+                formatter={(value: number) => value.toFixed(3)}
+                labelFormatter={(label: number) => `Time: ${label.toFixed(2)} min`}
+              />
               <Legend />
               <Line
                 type="monotone"

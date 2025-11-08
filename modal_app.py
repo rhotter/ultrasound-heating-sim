@@ -4,8 +4,6 @@ Run simulations on GPU with: modal deploy modal_app.py
 """
 
 import modal
-import base64
-import io
 
 # Create Modal app
 app = modal.App("ultrasound-heating-sim")
@@ -85,7 +83,7 @@ def run_simulation(
     thermal_t_end: float = 1000.0,
     steady_state: bool = False,
     # Options
-    acoustic_only: bool = False,
+    skip_videos: bool = True,
 ) -> dict:
     """
     Run ultrasound heating simulation on Modal GPU.
@@ -116,7 +114,6 @@ def run_simulation(
         ThermalConfig,
     )
     from src.acoustic.runner import run_acoustic_simulation
-    from src.acoustic.visualization import plot_medium_properties
     from src.heat.runner import run_heat_simulation
 
     print(f"GPU available: {torch.cuda.is_available()}")
@@ -157,161 +154,83 @@ def run_simulation(
         f"Focus depth: {actual_focus_depth} meters ({actual_focus_depth * 100 if actual_focus_depth else 'None (no focusing)'} cm)"
     )
     print(f"Enable azimuthal focusing: {enable_azimuthal_focusing}")
-    intensity_array, max_pressure_array, medium_sound_speed, pressure_data = (
-        run_acoustic_simulation(
-            config=config,
-            output_dir=None,
-            use_gpu=True,
-            focus_depth=actual_focus_depth,
+    # Create temporary directory for acoustic simulation outputs
+    import tempfile
+    import os
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        intensity_array, max_pressure_array, medium_sound_speed, pressure_data = (
+            run_acoustic_simulation(
+                config=config,
+                output_dir=temp_dir,
+                use_gpu=True,
+                focus_depth=actual_focus_depth,
+                skip_videos=skip_videos,
+            )
         )
-    )
+    finally:
+        # Clean up temp directory
+        import shutil
+
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
     print(f"Acoustic simulation complete, intensity shape: {intensity_array.shape}")
     print(f"Max pressure shape: {max_pressure_array.shape}")
     print(f"Medium sound speed shape: {medium_sound_speed.shape}")
     print(f"Pressure data shape: {pressure_data.shape}")
 
     # Generate visualizations
+    from src.modal_visualization import (
+        visualize_pressure_field,
+        visualize_intensity_field,
+        visualize_medium_properties,
+        create_pressure_video,
+        visualize_temperature_field,
+        create_temperature_video,
+    )
+
     visualizations = {}
+    mid_y_index = max_pressure_array.shape[1] // 2
 
     # Max pressure visualization
-    mid_slice_pressure = max_pressure_array[:, max_pressure_array.shape[1] // 2, :]
-    fig, ax = plt.subplots(figsize=(8, 6))
-    # Set extent to physical dimensions in cm
-    extent = [
-        0,
-        config.grid.Lx * 100,
-        config.grid.Lz * 100,
-        0,
-    ]  # [left, right, bottom, top]
-    im = ax.imshow(
-        mid_slice_pressure.T * 1e-6,
-        aspect="auto",
-        cmap="coolwarm",
-        origin="upper",
-        extent=extent,
+    visualizations["pressure"] = visualize_pressure_field(
+        max_pressure_array, config, mid_y_index
     )
-    ax.set_xlabel("X position (cm)")
-    ax.set_ylabel("Z position (depth, cm)")
-    ax.set_title("Max Pressure (MPa)")
-    plt.colorbar(im, ax=ax, label="Pressure (MPa)")
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
-    buf.seek(0)
-    visualizations["pressure"] = base64.b64encode(buf.read()).decode("utf-8")
-    plt.close()
 
     # Intensity visualization
-    mid_slice_intensity = intensity_array[:, intensity_array.shape[1] // 2, :]
-    fig, ax = plt.subplots(figsize=(8, 6))
-    extent = [
-        0,
-        config.grid.Lx * 100,
-        config.grid.Lz * 100,
-        0,
-    ]  # [left, right, bottom, top]
-    im = ax.imshow(
-        mid_slice_intensity.T,
-        aspect="auto",
-        cmap="viridis",
-        origin="upper",
-        extent=extent,
+    visualizations["intensity"] = visualize_intensity_field(
+        intensity_array, config, mid_y_index
     )
-    ax.set_xlabel("X position (cm)")
-    ax.set_ylabel("Z position (depth, cm)")
-    ax.set_title("Time-Averaged Acoustic Intensity (W/m²)")
-    plt.colorbar(im, ax=ax, label="Intensity (W/m²)")
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
-    buf.seek(0)
-    visualizations["intensity"] = base64.b64encode(buf.read()).decode("utf-8")
-    plt.close()
 
     # Medium properties visualization
-    fig, ax = plot_medium_properties(
-        medium_sound_speed, config, focus_depth=actual_focus_depth
+    visualizations["medium"] = visualize_medium_properties(
+        medium_sound_speed, config, actual_focus_depth
     )
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
-    buf.seek(0)
-    visualizations["medium"] = base64.b64encode(buf.read()).decode("utf-8")
-    plt.close()
 
-    # Pressure video
-    print("Generating pressure video...")
-    import tempfile
-    import os
-    import matplotlib.animation as animation
-
-    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_video:
-        video_path = tmp_video.name
-    try:
-        # Take mid-slice in Y direction
-        pressure_slice = pressure_data[:, :, pressure_data.shape[2] // 2, :]
-
-        # Downsample to ~100 frames
-        downsample = max(1, pressure_slice.shape[0] // 100)
-        pressure_frames = pressure_slice[::downsample]
-
-        # Calculate fps to make video exactly 5 seconds
-        video_duration = 5.0  # seconds
-        fps = len(pressure_frames) / video_duration
-
-        # Get global max for symmetric colorbar
-        vmax = float(np.max(np.abs(pressure_frames)))
-        vmin = -vmax
-
-        # Create animation with minimal padding
-        fig, ax = plt.subplots(figsize=(8, 6))
-        extent = [
-            0,
-            config.grid.Lx * 100,
-            config.grid.Lz * 100,
-            0,
-        ]  # [left, right, bottom, top]
-        im = ax.imshow(
-            pressure_frames[0].T,
-            aspect="auto",
-            cmap="coolwarm",
-            origin="upper",
-            vmin=vmin,
-            vmax=vmax,
-            extent=extent,
-        )
-        ax.set_xlabel("X position (cm)")
-        ax.set_ylabel("Z position (depth, cm)")
-        cbar = plt.colorbar(im, ax=ax, label="Pressure (Pa)")
-
-        def update(frame):
-            im.set_array(pressure_frames[frame].T)
-            ax.set_title(f"Pressure Field - {frame * downsample * config.acoustic.dt * 1e6:.2f} μs")
-            return [im]
-
-        interval_ms = 1000.0 / fps  # milliseconds between frames
-        anim = animation.FuncAnimation(
-            fig, update, frames=len(pressure_frames), interval=interval_ms, blit=True
-        )
-        # Use tight layout before saving to minimize whitespace
-        fig.tight_layout(pad=0.1)
-        anim.save(video_path, writer="ffmpeg", fps=fps)
-        plt.close()
-
-        with open(video_path, "rb") as f:
-            visualizations["pressure_video"] = base64.b64encode(f.read()).decode(
-                "utf-8"
+    # Pressure video (only if not skipped)
+    if not skip_videos:
+        print("Generating pressure video...")
+        try:
+            visualizations["pressure_video"] = create_pressure_video(
+                pressure_data, config, mid_y_slice=pressure_data.shape[2] // 2
             )
-        print("Pressure video generated successfully")
-    except Exception as e:
-        print(f"Error generating pressure video: {e}")
-        import traceback
+            print("Pressure video generated successfully")
+        except Exception as e:
+            print(f"Error generating pressure video: {e}")
+            import traceback
 
-        traceback.print_exc()
-    finally:
-        if os.path.exists(video_path):
-            os.unlink(video_path)
+            traceback.print_exc()
+    else:
+        print("Skipping pressure video generation")
 
     max_intensity = float(np.max(intensity_array))
     mean_intensity = float(np.mean(intensity_array))
     max_pressure = float(np.max(max_pressure_array))
+
+    # Calculate duty cycle: (pulse_duration * pulse_repetition_freq)
+    pulse_duration = num_cycles / freq  # seconds
+    duty_cycle = pulse_duration * pulse_repetition_freq  # dimensionless
 
     result = {
         "visualizations": visualizations,
@@ -321,211 +240,130 @@ def run_simulation(
             "max_pressure_Pa": max_pressure,
             "grid_size": [config.grid.Nx, config.grid.Ny, config.grid.Nz],
             "frequency_Hz": freq,
+            "duty_cycle": duty_cycle,
         },
     }
 
-    if not acoustic_only:
-        # Run thermal simulation
-        thermal_result = run_heat_simulation(
-            config=config,
-            intensity_data=intensity_array,
-            output_dir=None,
-            steady_state=steady_state,
+    # Run thermal simulation
+    thermal_result = run_heat_simulation(
+        config=config,
+        intensity_data=intensity_array,
+        output_dir=None,
+        steady_state=steady_state,
+        skip_videos=skip_videos,
+    )
+
+    # Extract results
+    T_history = thermal_result["T_history"]
+    times = thermal_result["times"]
+    layer_map = thermal_result["layer_map"]
+    simulator = thermal_result["simulator"]
+
+    # Convert to numpy
+    if steady_state:
+        # Steady state: T_history has shape (Nx, Ny, Nz)
+        temp_array = (
+            T_history.cpu().numpy()
+            if isinstance(T_history, torch.Tensor)
+            else np.array(T_history)
+        )
+    else:
+        # Time series: convert list of tensors to array
+        temp_array = np.array(
+            [T.cpu().numpy() if isinstance(T, torch.Tensor) else T for T in T_history]
         )
 
-        # Extract results
-        T_history = thermal_result["T_history"]
-        times = thermal_result["times"]
-        layer_map = thermal_result["layer_map"]
-        simulator = thermal_result["simulator"]
+    print(f"Thermal simulation complete, temperature shape: {temp_array.shape}")
 
-        # Convert to numpy
-        if steady_state:
-            # Steady state: T_history has shape (Nx, Ny, Nz)
-            temp_array = (
-                T_history.cpu().numpy()
-                if isinstance(T_history, torch.Tensor)
-                else np.array(T_history)
+    # Compute metadata
+    if steady_state:
+        # Steady state returns (1, Nx, Ny, Nz), squeeze to (Nx, Ny, Nz)
+        final_temp = (
+            temp_array.squeeze()
+            if hasattr(temp_array, "squeeze")
+            else np.squeeze(temp_array)
+        )
+    else:
+        final_temp = temp_array[-1]
+
+    # Get layer map to compute region-specific temperatures
+    layer_map_np = layer_map.cpu().numpy()
+    skull_mask = layer_map_np == 2  # Index 2 = skull
+    brain_mask = layer_map_np == 3  # Index 3 = brain
+
+    # Get arterial temperature from config
+    arterial_temp = config.thermal.arterial_temperature
+
+    # Handle empty masks (e.g., small test grids without all tissue layers)
+    # Subtract arterial temperature to get temperature rise
+    max_temp_rise_skull = (
+        float(np.max(final_temp[skull_mask]) - arterial_temp)
+        if skull_mask.any()
+        else 0.0
+    )
+    max_temp_rise_brain = (
+        float(np.max(final_temp[brain_mask]) - arterial_temp)
+        if brain_mask.any()
+        else 0.0
+    )
+
+    # Generate temperature visualization
+    result["visualizations"]["temperature"] = visualize_temperature_field(
+        final_temp, config, mid_y_index
+    )
+
+    # Include time series data for chart
+    if not steady_state:
+        # Get time series of max temperatures in skull and brain
+        skull_temps = []
+        brain_temps = []
+        for T_field in T_history:
+            T_tensor = (
+                T_field
+                if isinstance(T_field, torch.Tensor)
+                else torch.tensor(T_field, device=simulator.device)
             )
-        else:
-            # Time series: convert list of tensors to array
-            temp_array = np.array(
-                [
-                    T.cpu().numpy() if isinstance(T, torch.Tensor) else T
-                    for T in T_history
-                ]
-            )
+            # Handle empty masks
+            if not skull_mask.any() or not brain_mask.any():
+                raise ValueError("No skull or brain voxels in domain")
 
-        print(f"Thermal simulation complete, temperature shape: {temp_array.shape}")
+            skull_temps.append(float(torch.max(T_tensor[skull_mask]).cpu().numpy()))
+            brain_temps.append(float(torch.max(T_tensor[brain_mask]).cpu().numpy()))
 
-        # Compute metadata
-        if steady_state:
-            # Steady state returns (1, Nx, Ny, Nz), squeeze to (Nx, Ny, Nz)
-            final_temp = (
-                temp_array.squeeze()
-                if hasattr(temp_array, "squeeze")
-                else np.squeeze(temp_array)
-            )
-        else:
-            final_temp = temp_array[-1]
+        result["time_series"] = {
+            "time": [
+                i * thermal_dt * config.thermal.save_every
+                for i in range(len(T_history))
+            ],
+            "skull": skull_temps,
+            "brain": brain_temps,
+        }
+        result["has_temperature"] = True
 
-        # Get layer map to compute region-specific temperatures
-        layer_map_np = layer_map.cpu().numpy()
-        skull_mask = layer_map_np == 2  # Index 2 = skull
-        brain_mask = layer_map_np == 3  # Index 3 = brain
-
-        # Handle empty masks (e.g., small test grids without all tissue layers)
-        max_temp_rise_skull = (
-            float(np.max(final_temp[skull_mask])) if skull_mask.any() else 0.0
-        )
-        max_temp_rise_brain = (
-            float(np.max(final_temp[brain_mask])) if brain_mask.any() else 0.0
-        )
-
-        # Generate temperature visualization
-        mid_slice_temp = final_temp[:, final_temp.shape[1] // 2, :]
-        fig, ax = plt.subplots(figsize=(8, 6))
-        extent = [
-            0,
-            config.grid.Lx * 100,
-            config.grid.Lz * 100,
-            0,
-        ]  # [left, right, bottom, top]
-        im = ax.imshow(
-            mid_slice_temp.T,
-            aspect="auto",
-            cmap="hot",
-            origin="upper",
-            vmin=37,
-            extent=extent,
-        )
-        ax.set_xlabel("X position (cm)")
-        ax.set_ylabel("Z position (depth, cm)")
-        ax.set_title("Temperature (°C)")
-        cbar = plt.colorbar(im, ax=ax, label="Temperature (°C)")
-        cbar.formatter.set_useOffset(False)
-        cbar.formatter.set_scientific(False)
-        cbar.update_ticks()
-        buf = io.BytesIO()
-        plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
-        buf.seek(0)
-        result["visualizations"]["temperature"] = base64.b64encode(buf.read()).decode(
-            "utf-8"
-        )
-        plt.close()
-
-        # Include time series data for chart
-        if not steady_state:
-            # Get time series of max temperatures in skull and brain
-            skull_temps = []
-            brain_temps = []
-            for T_field in T_history:
-                T_tensor = (
-                    T_field
-                    if isinstance(T_field, torch.Tensor)
-                    else torch.tensor(T_field, device=simulator.device)
-                )
-                # Handle empty masks
-                if not skull_mask.any() or not brain_mask.any():
-                    raise ValueError("No skull or brain voxels in domain")
-
-                skull_temps.append(float(torch.max(T_tensor[skull_mask]).cpu().numpy()))
-                brain_temps.append(float(torch.max(T_tensor[brain_mask]).cpu().numpy()))
-
-            result["time_series"] = {
-                "time": [
-                    i * thermal_dt * config.thermal.save_every
-                    for i in range(len(T_history))
-                ],
-                "skull": skull_temps,
-                "brain": brain_temps,
-            }
-            result["has_temperature"] = True
-
-            # Generate temperature video for time-dependent simulations
+        # Generate temperature video for time-dependent simulations (only if not skipped)
+        if not skip_videos:
             print("Generating temperature video...")
-            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_video:
-                video_path = tmp_video.name
             try:
-                import matplotlib.animation as animation
-
-                # Convert T_history to numpy arrays and get mid-slices
-                T_slices = []
-                for T_field in T_history:
-                    T_np = (
-                        T_field.cpu().numpy()
-                        if isinstance(T_field, torch.Tensor)
-                        else np.array(T_field)
+                result["visualizations"]["temperature_video"] = (
+                    create_temperature_video(
+                        T_history, config, thermal_dt, mid_y_slice=mid_y_index
                     )
-                    # Take mid-slice in Y direction, same as static image
-                    mid_slice = T_np[:, T_np.shape[1] // 2, :]
-                    T_slices.append(mid_slice)
-
-                # Get global min/max for consistent colorbar
-                all_temps = np.array([t.flatten() for t in T_slices])
-                vmin = 37  # Same as static image
-                vmax = float(np.max(all_temps))
-
-                # Create animation
-                fig, ax = plt.subplots(figsize=(8, 6))
-                extent = [
-                    0,
-                    config.grid.Lx * 100,
-                    config.grid.Lz * 100,
-                    0,
-                ]  # [left, right, bottom, top]
-                im = ax.imshow(
-                    T_slices[0].T,
-                    aspect="auto",
-                    cmap="hot",
-                    origin="upper",
-                    vmin=vmin,
-                    vmax=vmax,
-                    extent=extent,
                 )
-                ax.set_xlabel("X position (cm)")
-                ax.set_ylabel("Z position (depth, cm)")
-                cbar = plt.colorbar(im, ax=ax, label="Temperature (°C)")
-                cbar.formatter.set_useOffset(False)
-                cbar.formatter.set_scientific(False)
-
-                def update(frame):
-                    im.set_array(T_slices[frame].T)
-                    actual_time = frame * thermal_dt * config.thermal.save_every
-                    ax.set_title(f"Temperature (°C) - Time: {actual_time:.1f}s")
-                    return [im]
-
-                # Calculate fps to make video exactly 5 seconds
-                video_duration = 5.0  # seconds
-                fps = len(T_slices) / video_duration
-                interval_ms = 1000.0 / fps  # milliseconds between frames
-
-                anim = animation.FuncAnimation(
-                    fig, update, frames=len(T_slices), interval=interval_ms, blit=True
-                )
-                anim.save(video_path, writer="ffmpeg", fps=fps)
-                plt.close()
-
-                with open(video_path, "rb") as f:
-                    result["visualizations"]["temperature_video"] = base64.b64encode(
-                        f.read()
-                    ).decode("utf-8")
                 print("Temperature video generated successfully")
             except Exception as e:
                 print(f"Error generating temperature video: {e}")
                 import traceback
 
                 traceback.print_exc()
-            finally:
-                if os.path.exists(video_path):
-                    os.unlink(video_path)
         else:
-            result["has_temperature"] = True
-            result["time_series"] = None
+            print("Skipping temperature video generation")
+    else:
+        result["has_temperature"] = True
+        result["time_series"] = None
 
-        result["metadata"]["max_temp_rise_skull_C"] = max_temp_rise_skull
-        result["metadata"]["max_temp_rise_brain_C"] = max_temp_rise_brain
-        result["metadata"]["steady_state"] = steady_state
+    result["metadata"]["max_temp_rise_skull_C"] = max_temp_rise_skull
+    result["metadata"]["max_temp_rise_brain_C"] = max_temp_rise_brain
+    result["metadata"]["steady_state"] = steady_state
 
     return result
 
@@ -566,7 +404,6 @@ def fastapi_app():
         thermal_dt: float = 0.01
         thermal_t_end: float = 1000.0
         steady_state: bool = False
-        acoustic_only: bool = False
 
     @web_app.post("/api/simulate")
     async def simulate(params: SimulationParams):
@@ -578,38 +415,6 @@ def fastapi_app():
             "status": "running",
             "message": "Simulation started successfully",
         }
-
-    @web_app.get("/api/debug/{job_id}")
-    async def debug_job(job_id: str):
-        """Debug endpoint to see function call details."""
-        try:
-            from modal.functions import FunctionCall
-
-            function_call = FunctionCall.from_id(job_id)
-
-            # Try to inspect the function call object
-            info = {
-                "job_id": job_id,
-                "function_call_str": str(function_call),
-                "function_call_repr": repr(function_call),
-                "function_call_type": str(type(function_call)),
-                "has_get": hasattr(function_call, "get"),
-                "has_get_aio": hasattr(function_call.get, "aio")
-                if hasattr(function_call, "get")
-                else False,
-            }
-
-            # Try to get attributes
-            try:
-                info["dir"] = [
-                    attr for attr in dir(function_call) if not attr.startswith("_")
-                ]
-            except:
-                pass
-
-            return info
-        except Exception as e:
-            return {"error": str(e), "type": type(e).__name__}
 
     @web_app.get("/api/results/{job_id}")
     async def get_results(job_id: str):

@@ -9,12 +9,22 @@ interface ResultsDisplayProps {
   metadata: SimulationMetadata | null;
   error: string | null;
   hasTemperatureData: boolean;
+  elapsedTime: number;
 }
 
-export default function ResultsDisplay({ status, jobId, metadata, error, hasTemperatureData }: ResultsDisplayProps) {
+export default function ResultsDisplay({ status, jobId, metadata, error, hasTemperatureData, elapsedTime }: ResultsDisplayProps) {
   if (status === 'idle') {
     return null;
   }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins > 0) {
+      return `${mins}m ${secs}s`;
+    }
+    return `${secs}s`;
+  };
 
   return (
     <div className="mt-6">
@@ -24,7 +34,7 @@ export default function ResultsDisplay({ status, jobId, metadata, error, hasTemp
           <div className="flex items-center gap-3">
             <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
             <div>
-              <p className="text-neutral-900 font-medium text-sm">Simulation in progress...</p>
+              <p className="text-neutral-900 font-medium text-sm">Simulation in progress... ({formatTime(elapsedTime)})</p>
               {jobId && <p className="text-neutral-500 text-xs font-mono mt-1">Job ID: {jobId}</p>}
             </div>
           </div>
@@ -43,37 +53,6 @@ export default function ResultsDisplay({ status, jobId, metadata, error, hasTemp
           <p className="text-green-900 font-medium text-sm">Simulation completed successfully</p>
         </div>
       )}
-
-      {/* Results */}
-      {status === 'completed' && metadata && 'max_intensity_W_m2' in metadata && (
-        <div className="mt-6 bg-white border border-neutral-200 rounded-xl p-6">
-          <h3 className="text-base font-semibold text-neutral-900 mb-4">Simulation Results</h3>
-
-          <div className="space-y-3">
-            {metadata.max_temp_rise_skull_C !== undefined && (
-              <>
-                <MetricRow
-                  label="Max Skull Temp"
-                  value={`${metadata.max_temp_rise_skull_C.toFixed(3)} °C`}
-                />
-                <MetricRow
-                  label="Max Brain Temp"
-                  value={`${metadata.max_temp_rise_brain_C?.toFixed(3)} °C`}
-                />
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MetricRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between items-center p-3 bg-neutral-50 rounded-lg border border-neutral-200">
-      <span className="font-medium text-neutral-700 text-sm">{label}</span>
-      <span className="text-neutral-900 font-semibold font-mono text-sm">{value}</span>
     </div>
   );
 }
