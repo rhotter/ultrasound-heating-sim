@@ -159,6 +159,18 @@ export default function Home() {
             />
           </div>
         )}
+
+        {/* Footer */}
+        <div className="text-center py-4">
+          <a
+            href="https://github.com/rhotter/ultrasound-heating-sim"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-neutral-700 hover:text-neutral-900 underline hover:underline-offset-2 transition-all"
+          >
+            View source on GitHub
+          </a>
+        </div>
       </div>
     </div>
   );
