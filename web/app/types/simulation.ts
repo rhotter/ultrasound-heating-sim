@@ -46,6 +46,9 @@ export interface SimulationMetadata {
   duty_cycle: number;
   max_temp_rise_skull_C?: number;
   max_temp_rise_brain_C?: number;
+  cem43_per_min_skull?: number;
+  cem43_per_min_brain?: number;
+  max_safe_exposure_cem43_min?: number;
   steady_state?: boolean;
 }
 

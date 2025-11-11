@@ -9,6 +9,29 @@ import modal
 app = modal.App("ultrasound-heating-sim")
 
 
+def calculate_cem43_per_min(max_temperature: float) -> float:
+    """
+    Calculate CEM43 thermal dose rate per minute at a given temperature.
+
+    CEM43 is a thermal dose metric that quantifies tissue damage.
+    This function returns the dose rate (equivalent minutes at 43°C per actual minute).
+
+    Formula: CEM43_per_min = R^(43-T)
+    where:
+        R = 0.5 for T >= 43°C (above threshold)
+        R = 0.25 for T < 43°C (below threshold)
+        T = temperature in °C
+
+    Args:
+        max_temperature: Maximum temperature in °C
+
+    Returns:
+        CEM43 dose rate in equivalent minutes per actual minute
+    """
+    R = 0.5 if max_temperature >= 43 else 0.25
+    return R ** (43 - max_temperature)
+
+
 # Build image with dependencies and copy source code during build
 def build_image():
     # Use Modal's micromamba image with CUDA support for k-Wave
@@ -307,7 +330,6 @@ def run_simulation(
 
     # Extract results
     T_history = thermal_result["T_history"]
-    times = thermal_result["times"]
     layer_map = thermal_result["layer_map"]
     simulator = thermal_result["simulator"]
 
@@ -391,6 +413,28 @@ def run_simulation(
             "brain": brain_temps,
         }
         result["has_temperature"] = True
+
+        # Calculate CEM43 dose rate using max temperature across all time
+        max_temp_skull_all_time = max(skull_temps)
+        max_temp_brain_all_time = max(brain_temps)
+
+        # Calculate CEM43 per minute values
+        cem43_per_min_skull = calculate_cem43_per_min(max_temp_skull_all_time)
+        cem43_per_min_brain = calculate_cem43_per_min(max_temp_brain_all_time)
+
+        # Add CEM43 per minute values to metadata
+        result["metadata"]["cem43_per_min_skull"] = cem43_per_min_skull
+        result["metadata"]["cem43_per_min_brain"] = cem43_per_min_brain
+
+        # Calculate maximum safe exposure time based on CEM43 limits
+        # Safety limits: 16 CEM43 for skull, 2 CEM43 for brain
+        # Max exposure time (minutes) = CEM43_limit / CEM43_per_min
+        max_exposure_skull_min = 16.0 / cem43_per_min_skull
+        max_exposure_brain_min = 2.0 / cem43_per_min_brain
+
+        # Use the more conservative (smaller) value
+        max_safe_exposure_cem43_min = min(max_exposure_skull_min, max_exposure_brain_min)
+        result["metadata"]["max_safe_exposure_cem43_min"] = max_safe_exposure_cem43_min
 
         # Generate temperature video for time-dependent simulations (only if not skipped)
         if not skip_videos:

@@ -152,6 +152,19 @@ export default function Home() {
               </div>
             )}
 
+            {/* CEM43 Maximum Safe Exposure */}
+            {metadata && metadata.max_safe_exposure_cem43_min !== undefined && (
+              <div className="card">
+                <div className="card-body">
+                  <h3 className="text-base font-semibold text-neutral-900 mb-4">Maximum Safe Exposure Time (CEM43)</h3>
+                  <p className="text-sm text-neutral-600 mb-4">Based on thermal dose safety limits (16 CEM43 for skull, 2 CEM43 for brain)</p>
+                  <div>
+                    <p className="text-3xl font-semibold text-neutral-900">{(metadata.max_safe_exposure_cem43_min / 60).toFixed(2)} hours</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <VisualizationPanel
               visualizations={visualizations}
               timeSeries={timeSeries}
