@@ -19,7 +19,12 @@ export default function ResultsDisplay({ status, jobId, metadata, error, hasTemp
   }
 
   const formatTime = (seconds: number) => {
-    return `${seconds}s`;
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
   };
 
   return (
