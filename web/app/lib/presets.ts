@@ -1,8 +1,8 @@
 import { SimulationParams } from '../types/simulation';
 
 export const defaultParams: SimulationParams = {
-  Lx: 0.050,  // 5 cm in x
-  Ly: 0.025,  // 2.5 cm in y
+  Lx: 0.040,  // 4 cm in x
+  Ly: 0.020,  // 2 cm in y
   Lz: 0.025,  // 2.5 cm in z (enough for all tissue layers + brain)
   pml_size: 10,
   freq: 2000000,
