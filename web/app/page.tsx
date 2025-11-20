@@ -98,7 +98,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen py-12 px-4">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-3xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold text-neutral-900 tracking-tight">
