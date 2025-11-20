@@ -191,8 +191,26 @@ export default function SimulationForm({ onSubmit, isRunning }: SimulationFormPr
               setDurationMin(val);
             }}
             help="Total simulation time"
-            disabled={isRunning}
+            disabled={isRunning || params.steady_state}
           />
+        </div>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <input
+              id="steady-state"
+              type="checkbox"
+              checked={params.steady_state}
+              onChange={(e) => handleChange('steady_state', e.target.checked)}
+              disabled={isRunning}
+              className="w-4 h-4 text-neutral-900 border-neutral-300 rounded focus:ring-neutral-900 disabled:cursor-not-allowed"
+            />
+            <label htmlFor="steady-state" className="text-sm text-neutral-700 cursor-pointer">
+              Run to steady state (infinite duration)
+            </label>
+          </div>
+          <p className="text-xs text-neutral-500 ml-6">
+            Simulate until temperature reaches equilibrium instead of fixed duration
+          </p>
         </div>
       </div>
 
